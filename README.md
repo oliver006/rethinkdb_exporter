@@ -1,6 +1,6 @@
 # RethinkDB Metrics Exporter
 
-Prometheus exporter for RethinkDB server and table metrics.<br>
+Prometheus exporter for RethinkDB cluster, server and table metrics.<br>
 Supports RethinkDB 2.x and 1.6.x (and possibly older versions)
 
 ## Building and running

@@ -233,12 +233,12 @@ func extractAllMetrics(sess *r.Session, scrapes chan<- scrapeResult) error {
 				if err = res.One(&count); err != nil {
 					return err
 				}
-				scrapes <- s.newScrapeResult("table_items_total", count)
-				countTables += 1
+				scrapes <- s.newScrapeResult("table_docs_total", count)
+				countTables++
 			}
 		case "table_server":
 			{
-				countReplicas += 1
+				countReplicas++
 				s.extractStorageEngineStats(scrapes)
 			}
 		}
@@ -306,7 +306,7 @@ func (e *Exporter) setMetrics(scrapes <-chan scrapeResult) {
 
 		if _, ok := e.metrics[name]; !ok {
 
-			var asArray []string = make([]string, 0, len(labels))
+			asArray := make([]string, 0, len(labels))
 			for k := range labels {
 				asArray = append(asArray, k)
 			}
