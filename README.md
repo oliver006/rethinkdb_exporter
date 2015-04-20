@@ -31,10 +31,16 @@ errors returned from the `stats` table.<br>
 Metric names are `rethinkdb_cluster_[servers|server_errors|tables|replicas]_total`
 
 
+### What does it look like?
+Example [PromDash](https://github.com/prometheus/promdash) screenshots:<br>
+![screen2](https://cloud.githubusercontent.com/assets/1222339/7242251/c1226aaa-e78e-11e4-9b20-ed49c8052e73.png)<br>
+![screen1](https://cloud.githubusercontent.com/assets/1222339/7242252/c127bc58-e78e-11e4-80a7-fe74c51b05ca.png)
+
+
 ### What else?
 
 Things that can/should be added
 - status metrics per shard 
 - ...
 
-Open an issue or PR if you have more suggestions, ideas what to add.
+Open an issue or PR if you have more suggestions or ideas about what to add.

@@ -264,22 +264,18 @@ func (e *Exporter) scrape(scrapes chan<- scrapeResult) {
 		Database:  "rethinkdb",
 		AuthKey:   e.auth,
 	})
-	if err != nil {
-		log.Printf("error opening connection to database: %s", err)
-		e.error.Set(1)
-		e.duration.Set(float64(time.Now().UnixNano()-now) / 1000000000)
-		return
-	}
-	defer sess.Close()
 
-	if err := extractAllMetrics(sess, scrapes); err != nil {
-		log.Printf("error opening connection to database: %s", err)
-		e.error.Set(1)
-		e.duration.Set(float64(time.Now().UnixNano()-now) / 1000000000)
-		return
+	if err == nil {
+		defer sess.Close()
+		if err := extractAllMetrics(sess, scrapes); err == nil {
+			e.error.Set(0)
+			e.duration.Set(float64(time.Now().UnixNano()-now) / 1000000000)
+			return
+		}
 	}
 
-	e.error.Set(0)
+	log.Printf("error opening connection to database: %s", err)
+	e.error.Set(1)
 	e.duration.Set(float64(time.Now().UnixNano()-now) / 1000000000)
 }
 

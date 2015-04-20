@@ -7,7 +7,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"testing"
 	"time"
 
@@ -16,18 +15,20 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-func TestMetrics(t *testing.T) {
+var (
+	names = []string{"john", "paul", "ringo", "george"}
+)
 
-	dbName := fmt.Sprintf("db%d", int32(time.Now().Unix()))
+func setupDB(t *testing.T) (sess *r.Session, dbName string, err error) {
 
-	addr := "localhost:28015"
+	dbName = fmt.Sprintf("db%d", int32(time.Now().Unix()))
 
-	sess, err := r.Connect(r.ConnectOpts{
-		Address:  addr,
+	sess, err = r.Connect(r.ConnectOpts{
+		Address:  "localhost:28015",
 		Database: dbName,
 	})
 	if err != nil {
-		log.Fatalln(err.Error())
+		return
 	}
 
 	_, err = r.DbCreate(dbName).Run(sess)
@@ -36,7 +37,6 @@ func TestMetrics(t *testing.T) {
 		return
 	}
 
-	defer r.DbDrop(dbName).Run(sess)
 	sess.Use(dbName)
 
 	r.Db(dbName).TableCreate("test1", r.TableCreateOpts{PrimaryKey: "id"}).Run(sess)
@@ -54,16 +54,11 @@ func TestMetrics(t *testing.T) {
 		return
 	}
 
-	for idx, table := range tables {
-		log.Printf("%d   %v", idx, table)
-	}
-
 	if len(tables) != 2 {
 		t.Errorf("table list off, %v ", tables)
 		return
 	}
 
-	names := []string{"john", "paul", "ringo", "george"}
 	for idx, n := range names {
 
 		var rec = struct {
@@ -74,11 +69,22 @@ func TestMetrics(t *testing.T) {
 		r.Db(dbName).Table("test1").Insert(rec).RunWrite(sess)
 	}
 
-	scrapes := make(chan scrapeResult)
+	return
+}
 
-	e := NewRethinkDBExporter(addr, "", "test", "")
+func TestMetrics(t *testing.T) {
+
+	sess, dbName, err := setupDB(t)
+	if err != nil {
+		t.Errorf("DB setup borked")
+		return
+	}
+	defer r.DbDrop(dbName).Run(sess)
+
+	e := NewRethinkDBExporter("localhost:28015", "", "test", "")
 	e.metrics = map[string]*prometheus.GaugeVec{}
 
+	scrapes := make(chan scrapeResult)
 	go e.scrape(scrapes)
 
 	for s := range scrapes {
@@ -134,7 +140,23 @@ func TestMetrics(t *testing.T) {
 		t.Errorf("len(e.metrics) should be > 10, is %d", len(e.metrics))
 		return
 	}
+}
 
+func TestInvalidDB(t *testing.T) {
+
+	e := NewRethinkDBExporter("localhost:1111", "", "test", "")
+	e.metrics = map[string]*prometheus.GaugeVec{}
+
+	scrapes := make(chan scrapeResult)
+	go e.scrape(scrapes)
+
+	neverTrue := false
+	for _ = range scrapes {
+		neverTrue = true
+	}
+	if neverTrue {
+		t.Errorf("this shouldn't happen")
+	}
 }
 
 func init() {
