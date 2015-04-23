@@ -33,8 +33,8 @@ Metric names are `rethinkdb_cluster_[servers|server_errors|tables|replicas]_tota
 
 ### What does it look like?
 Example [PromDash](https://github.com/prometheus/promdash) screenshots:<br>
-![screen2](https://cloud.githubusercontent.com/assets/1222339/7242251/c1226aaa-e78e-11e4-9b20-ed49c8052e73.png)<br>
-![screen1](https://cloud.githubusercontent.com/assets/1222339/7242252/c127bc58-e78e-11e4-80a7-fe74c51b05ca.png)
+![rethink_exporter_screen](https://cloud.githubusercontent.com/assets/1222339/7304973/88c2da14-e9c8-11e4-9f16-bf4de4dae63c.png)
+
 
 
 ### What else?
