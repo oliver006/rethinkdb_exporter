@@ -7,12 +7,14 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"strings"
 	"testing"
 	"time"
 
 	r "github.com/dancannon/gorethink"
-
 	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 )
 
 var (
@@ -84,78 +86,96 @@ func TestMetrics(t *testing.T) {
 	e := NewRethinkDBExporter("localhost:28015", "", "test", "")
 	e.metrics = map[string]*prometheus.GaugeVec{}
 
-	scrapes := make(chan scrapeResult)
-	go e.scrape(scrapes)
+	chM := make(chan prometheus.Metric)
+	chD := make(chan *prometheus.Desc)
 
-	for s := range scrapes {
+	go func() {
+		e.Collect(chM)
+		close(chM)
+	}()
 
-		metric := s.Name
-		value := s.Value
-		table := s.Table
-		db := s.DB
+	countMetrics := 0
+	for m := range chM {
 
-		if db != dbName {
-			continue
+		descString := m.Desc().String()
+		log.Printf("descString: %s", descString)
+		countMetrics++
+
+		switch m.(type) {
+		case prometheus.Gauge:
+
+			g := &dto.Metric{}
+			m.Write(g)
+			if g.GetGauge() == nil {
+				continue
+			}
+			//			log.Printf("g.String: %s", g.String())
+			log.Printf("g: %#v", g)
+
+			for _, l := range g.Label {
+				log.Printf("l: %s %s", *l.Name, *l.Value)
+
+			}
+
+		default:
+			log.Printf("default: m: %#v", m)
 		}
 
-		// cluster and server wide metrics
-		switch metric {
-		case "cluster_client_connections", "cluster_clients_active", "cluster_servers_total", "cluster_tables_total", "cluster_replicas_total":
-			{
-				if int(value) < 1 {
-					t.Errorf("value for %s should >0", metric)
-					return
-				}
-			}
-		case "server_client_connections", "server_clients_active":
-			{
-				if int(value) < 1 {
-					t.Errorf("value for %s should >0", metric)
-					return
-				}
+	}
+	if countMetrics < 10 {
+		t.Errorf("Expected at least 10 metrics, found only %d", countMetrics)
+	}
+
+	// descriptions
+	go func() {
+		e.Describe(chD)
+		close(chD)
+	}()
+
+	allDescr := []*prometheus.Desc{}
+	for d := range chD {
+		allDescr = append(allDescr, d)
+	}
+
+	wants := []string{"server_client_connections", "cluster_servers_total", "cluster_client_connections", "table_server_disk_read_bytes_per_sec", "table_server_disk_garbage_bytes"}
+	for _, w := range wants {
+		found := false
+		for _, d := range allDescr {
+			if strings.Contains(d.String(), w) {
+				found = true
+				break
 			}
 		}
 
-		if table != "test1" {
-			continue
-		}
-
-		// table wide metrics
-		switch metric {
-		case "table_docs_total":
-			{
-				if int(value) != len(names) {
-					t.Errorf("missing records from test1, should be $5, is %d", len(names), int(value))
-					return
-				}
-			}
+		if !found {
+			t.Errorf("didn't find %s in descriptions", w)
 		}
 	}
 
-	scrapes = make(chan scrapeResult)
-	go e.scrape(scrapes)
-	e.setMetrics(scrapes)
-
-	if len(e.metrics) < 10 {
-		t.Errorf("len(e.metrics) should be > 10, is %d", len(e.metrics))
-		return
+	if len(allDescr) < 10 {
+		t.Errorf("Expected at least 10 descriptions, found only %d", len(allDescr))
 	}
+
+	log.Printf("done")
+
 }
 
 func TestInvalidDB(t *testing.T) {
 
-	e := NewRethinkDBExporter("localhost:1111", "", "test", "")
+	e := NewRethinkDBExporter("localhost:1", "", "test", "")
 	e.metrics = map[string]*prometheus.GaugeVec{}
 
 	scrapes := make(chan scrapeResult)
 	go e.scrape(scrapes)
 
 	neverTrue := false
-	for _ = range scrapes {
+	for range scrapes {
 		neverTrue = true
 	}
 	if neverTrue {
 		t.Errorf("this shouldn't happen")
+	} else {
+		log.Println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this is expected")
 	}
 }
 

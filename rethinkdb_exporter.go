@@ -11,7 +11,6 @@ import (
 	"time"
 
 	r "github.com/dancannon/gorethink"
-
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -25,13 +24,14 @@ var (
 )
 
 type Exporter struct {
-	addrs           []string
-	auth            string
-	clusterName     string
-	namespace       string
-	duration, error prometheus.Gauge
-	totalScrapes    prometheus.Counter
-	metrics         map[string]*prometheus.GaugeVec
+	addrs        []string
+	auth         string
+	clusterName  string
+	namespace    string
+	duration     prometheus.Gauge
+	scrapeError  prometheus.Gauge
+	totalScrapes prometheus.Counter
+	metrics      map[string]*prometheus.GaugeVec
 	sync.RWMutex
 }
 
@@ -52,7 +52,7 @@ func NewRethinkDBExporter(addr, auth, clusterName, namespace string) *Exporter {
 			Name:      "exporter_scrapes_total",
 			Help:      "Current total rethinkdb scrapes.",
 		}),
-		error: prometheus.NewGauge(prometheus.GaugeOpts{
+		scrapeError: prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "exporter_last_scrape_error",
 			Help:      "The last scrape error status.",
@@ -68,7 +68,7 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 
 	ch <- e.duration.Desc()
 	ch <- e.totalScrapes.Desc()
-	ch <- e.error.Desc()
+	ch <- e.scrapeError.Desc()
 }
 
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
@@ -86,7 +86,7 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.setMetrics(scrapes)
 	ch <- e.duration
 	ch <- e.totalScrapes
-	ch <- e.error
+	ch <- e.scrapeError
 	e.collectMetrics(ch)
 }
 
@@ -265,17 +265,18 @@ func (e *Exporter) scrape(scrapes chan<- scrapeResult) {
 		AuthKey:   e.auth,
 	})
 
+	errCount := 0
 	if err == nil {
-		defer sess.Close()
-		if err := extractAllMetrics(sess, scrapes); err == nil {
-			e.error.Set(0)
-			e.duration.Set(float64(time.Now().UnixNano()-now) / 1000000000)
-			return
+		if err := extractAllMetrics(sess, scrapes); err != nil {
+			errCount++
 		}
+		sess.Close()
 	}
 
-	log.Printf("error opening connection to database: %s", err)
-	e.error.Set(1)
+	if err != nil {
+		log.Printf("scrape err: %s", err)
+	}
+	e.scrapeError.Set(float64(errCount))
 	e.duration.Set(float64(time.Now().UnixNano()-now) / 1000000000)
 }
 
