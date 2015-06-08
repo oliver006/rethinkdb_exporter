@@ -225,7 +225,7 @@ func extractAllMetrics(sess *r.Session, scrapes chan<- scrapeResult) error {
 			}
 		case "table":
 			{
-				res, err := r.Db(s.DB).Table(s.Table).Count().Run(sess)
+				res, err := r.DB(s.DB).Table(s.Table).Count().Run(sess)
 				if err != nil {
 					return err
 				}

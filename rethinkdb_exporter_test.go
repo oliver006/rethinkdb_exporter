@@ -33,18 +33,17 @@ func setupDB(t *testing.T) (sess *r.Session, dbName string, err error) {
 		return
 	}
 
-	_, err = r.DbCreate(dbName).Run(sess)
+	_, err = r.DBCreate(dbName).Run(sess)
 	if err != nil {
 		t.Errorf("couldn't create table, err: %s ", err)
 		return
 	}
+	r.DB(dbName).Wait().Run(sess)
 
-	sess.Use(dbName)
+	r.DB(dbName).TableCreate("test1", r.TableCreateOpts{PrimaryKey: "id"}).Exec(sess)
+	r.DB(dbName).TableCreate("test2", r.TableCreateOpts{PrimaryKey: "id"}).Exec(sess)
 
-	r.Db(dbName).TableCreate("test1", r.TableCreateOpts{PrimaryKey: "id"}).Run(sess)
-	r.Db(dbName).TableCreate("test2", r.TableCreateOpts{PrimaryKey: "id"}).Run(sess)
-
-	res, err := r.Db(dbName).TableList().Run(sess)
+	res, err := r.DB(dbName).TableList().Run(sess)
 	if err != nil {
 		t.Errorf("couldn't load table list, err: %s ", err)
 		return
@@ -57,7 +56,7 @@ func setupDB(t *testing.T) (sess *r.Session, dbName string, err error) {
 	}
 
 	if len(tables) != 2 {
-		t.Errorf("table list off, %v ", tables)
+		t.Errorf("table list off, %d    %v ", len(tables), tables)
 		return
 	}
 
@@ -68,9 +67,10 @@ func setupDB(t *testing.T) (sess *r.Session, dbName string, err error) {
 			Age  int
 		}{Name: n, Age: 56 + idx}
 
-		r.Db(dbName).Table("test1").Insert(rec).RunWrite(sess)
+		r.DB(dbName).Table("test1").Insert(rec).RunWrite(sess)
 	}
 
+	sess.Use(dbName)
 	return
 }
 
@@ -81,7 +81,7 @@ func TestMetrics(t *testing.T) {
 		t.Errorf("DB setup borked")
 		return
 	}
-	defer r.DbDrop(dbName).Run(sess)
+	defer r.DBDrop(dbName).Run(sess)
 
 	e := NewRethinkDBExporter("localhost:28015", "", "test", "")
 	e.metrics = map[string]*prometheus.GaugeVec{}
@@ -95,10 +95,11 @@ func TestMetrics(t *testing.T) {
 	}()
 
 	countMetrics := 0
+	countMetricsForDB := 0
 	for m := range chM {
 
-		descString := m.Desc().String()
-		log.Printf("descString: %s", descString)
+		// descString := m.Desc().String()
+		// log.Printf("descString: %s", descString)
 		countMetrics++
 
 		switch m.(type) {
@@ -109,12 +110,9 @@ func TestMetrics(t *testing.T) {
 			if g.GetGauge() == nil {
 				continue
 			}
-			//			log.Printf("g.String: %s", g.String())
-			log.Printf("g: %#v", g)
 
-			for _, l := range g.Label {
-				log.Printf("l: %s %s", *l.Name, *l.Value)
-
+			if len(g.Label) == 4 && *g.Label[1].Name == "db" && *g.Label[1].Value == dbName {
+				countMetricsForDB++
 			}
 
 		default:
@@ -124,6 +122,10 @@ func TestMetrics(t *testing.T) {
 	}
 	if countMetrics < 10 {
 		t.Errorf("Expected at least 10 metrics, found only %d", countMetrics)
+	}
+
+	if countMetricsForDB < 4 {
+		t.Errorf("Expected at least 4 metrics, found only %d", countMetricsForDB)
 	}
 
 	// descriptions
@@ -155,9 +157,6 @@ func TestMetrics(t *testing.T) {
 	if len(allDescr) < 10 {
 		t.Errorf("Expected at least 10 descriptions, found only %d", len(allDescr))
 	}
-
-	log.Printf("done")
-
 }
 
 func TestInvalidDB(t *testing.T) {
