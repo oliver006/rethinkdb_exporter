@@ -2,7 +2,7 @@ package main
 
 /*
   for html coverage report run
-  go test -coverprofile=coverage.out  && go tool cover -html=coverage.out
+  go test -coverprofile=coverage.out && go tool cover -html=coverage.out
 */
 
 import (
@@ -120,13 +120,105 @@ func TestMetrics(t *testing.T) {
 		}
 
 	}
-	if countMetrics < 10 {
-		t.Errorf("Expected at least 10 metrics, found only %d", countMetrics)
+
+	expectedCountMetrics := 52
+	if countMetrics != expectedCountMetrics {
+		t.Errorf("Expected %d metrics, found %d", expectedCountMetrics, countMetrics)
 	}
 
-	if countMetricsForDB < 4 {
-		t.Errorf("Expected at least 4 metrics, found only %d", countMetricsForDB)
+	expectedCountMetricsForDB := 24
+	if countMetricsForDB != expectedCountMetricsForDB {
+		t.Errorf("Expected %d metrics, found %d", expectedCountMetricsForDB, countMetricsForDB)
 	}
+
+	// descriptions
+	go func() {
+		e.Describe(chD)
+		close(chD)
+	}()
+
+	allDescr := []*prometheus.Desc{}
+	for d := range chD {
+		allDescr = append(allDescr, d)
+	}
+
+	wants := []string{"server_client_connections", "cluster_servers_total", "cluster_client_connections", "table_server_disk_read_bytes_per_sec", "table_server_disk_garbage_bytes"}
+	for _, w := range wants {
+		found := false
+		for _, d := range allDescr {
+			if strings.Contains(d.String(), w) {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			t.Errorf("didn't find %s in descriptions", w)
+		}
+	}
+
+	if len(allDescr) < 10 {
+		t.Errorf("Expected at least 10 descriptions, found only %d", len(allDescr))
+	}
+}
+
+func TestMetricsNoRowCounting(t *testing.T) {
+
+	sess, dbName, err := setupDB(t)
+	if err != nil {
+		t.Errorf("DB setup borked")
+		return
+	}
+	defer r.DBDrop(dbName).Run(sess)
+
+	*countRows = false
+
+	e := NewRethinkDBExporter("localhost:28015", "", "test", "")
+	e.metrics = map[string]*prometheus.GaugeVec{}
+
+	chM := make(chan prometheus.Metric)
+	chD := make(chan *prometheus.Desc)
+
+	go func() {
+		e.Collect(chM)
+		close(chM)
+	}()
+
+	countMetrics := 0
+	countMetricsForDB := 0
+	for m := range chM {
+
+		countMetrics++
+
+		switch m.(type) {
+		case prometheus.Gauge:
+
+			g := &dto.Metric{}
+			m.Write(g)
+			if g.GetGauge() == nil {
+				continue
+			}
+
+			if len(g.Label) == 4 && *g.Label[1].Name == "db" && *g.Label[1].Value == dbName {
+				countMetricsForDB++
+			}
+
+		default:
+			log.Printf("default: m: %#v", m)
+		}
+
+	}
+
+	expectedCountMetrics := 50
+	if countMetrics != expectedCountMetrics {
+		t.Errorf("Expected %d metrics, found %d", expectedCountMetrics, countMetrics)
+	}
+
+	expectedCountMetricsForDB := 24
+	if countMetricsForDB != expectedCountMetricsForDB {
+		t.Errorf("Expected %d metrics, found %d", expectedCountMetricsForDB, countMetricsForDB)
+	}
+
 
 	// descriptions
 	go func() {
@@ -178,5 +270,3 @@ func TestInvalidDB(t *testing.T) {
 	}
 }
 
-func init() {
-}
