@@ -1,4 +1,5 @@
 # RethinkDB Metrics Exporter
+[![Circle CI](https://circleci.com/gh/oliver006/rethinkdb_exporter.svg?style=shield)](https://circleci.com/gh/oliver006/rethinkdb_exporter) [![Coverage Status](https://coveralls.io/repos/github/oliver006/redis_exporter/badge.svg?branch=master)](https://coveralls.io/github/oliver006/redis_exporter?branch=master)
 
 Prometheus exporter for RethinkDB cluster, server and table metrics.<br>
 Supports RethinkDB 2.x and 1.6.x (and possibly older versions)
@@ -14,6 +15,7 @@ Name               | Description
 -------------------|------------
 db.addr            | Address of one or more nodes of the cluster, comma separated.
 db.auth            | Auth key of the RethinkDB cluster.
+db.count-rows      | Count rows per table, turn off if you experience perf. issues with large tables
 clustername        | Name of the cluster, if set it's added as a label to the metrics.
 namespace          | Namespace for the metrics, defaults to "rethinkdb".
 web.listen-address | Address to listen on for web interface and telemetry.

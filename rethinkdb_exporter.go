@@ -17,6 +17,7 @@ import (
 var (
 	addr          = flag.String("db.addr", "localhost:28015", "Address of one or more nodes of the cluster, comma separated")
 	auth          = flag.String("db.auth", "", "Auth key of the RethinkDB cluster")
+	countRows     = flag.Bool("db.count-rows", true, "Count rows per table, turn off if you experience perf. issues with large tables")
 	clusterName   = flag.String("clustername", "", "Cluster Name, added as label to metrics")
 	namespace     = flag.String("namespace", "rethinkdb", "Namespace for metrics")
 	listenAddress = flag.String("web.listen-address", ":9123", "Address to listen on for web interface and telemetry.")
@@ -225,6 +226,9 @@ func extractAllMetrics(sess *r.Session, scrapes chan<- scrapeResult) error {
 			}
 		case "table":
 			{
+				if !*countRows {
+					continue
+				}
 				res, err := r.DB(s.DB).Table(s.Table).Count().Run(sess)
 				if err != nil {
 					return err
