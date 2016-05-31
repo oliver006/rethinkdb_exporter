@@ -219,7 +219,6 @@ func TestMetricsNoRowCounting(t *testing.T) {
 		t.Errorf("Expected %d metrics, found %d", expectedCountMetricsForDB, countMetricsForDB)
 	}
 
-
 	// descriptions
 	go func() {
 		e.Describe(chD)
@@ -269,4 +268,3 @@ func TestInvalidDB(t *testing.T) {
 		log.Println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this is expected")
 	}
 }
-

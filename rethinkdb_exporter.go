@@ -226,6 +226,7 @@ func extractAllMetrics(sess *r.Session, scrapes chan<- scrapeResult) error {
 			}
 		case "table":
 			{
+				countTables++
 				if !*countRows {
 					continue
 				}
@@ -238,7 +239,6 @@ func extractAllMetrics(sess *r.Session, scrapes chan<- scrapeResult) error {
 					return err
 				}
 				scrapes <- s.newScrapeResult("table_docs_total", count)
-				countTables++
 			}
 		case "table_server":
 			{
