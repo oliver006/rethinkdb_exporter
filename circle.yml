@@ -12,6 +12,7 @@ dependencies:
 machine:
   environment:
     IMPORT_PATH: "github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
+    EXPORTER_VERSION: "0.2"
 
 
 test:
@@ -24,3 +25,19 @@ test:
   post:
     - /home/ubuntu/.go_workspace/bin/goveralls -coverprofile=/home/ubuntu/coverage.out -service=circle-ci -repotoken=gpmuonPXNb2U51fNXpoUgblgewMsw1QDF
 
+
+deployment:
+  publish:
+    branch: master
+    commands:
+      - go get github.com/mitchellh/gox
+      - go get github.com/tcnksm/ghr
+      - gox --osarch="darwin/amd64"  -output "dist/rethinkdb_exporter" && cd dist && tar -cvzf rethinkdb_exporter-$EXPORTER_VERSION.darwin-amd64.tar.gz rethinkdb_exporter && rm rethinkdb_exporter && cd ..
+      - gox --osarch="darwin/386"    -output "dist/rethinkdb_exporter" && cd dist && tar -cvzf rethinkdb_exporter-$EXPORTER_VERSION.darwin-386.tar.gz rethinkdb_exporter && rm rethinkdb_exporter && cd ..
+      - gox --osarch="linux/amd64"   -output "dist/rethinkdb_exporter" && cd dist && tar -cvzf rethinkdb_exporter-$EXPORTER_VERSION.linux-amd64.tar.gz rethinkdb_exporter && rm rethinkdb_exporter && cd ..
+      - gox --osarch="linux/386"     -output "dist/rethinkdb_exporter" && cd dist && tar -cvzf rethinkdb_exporter-$EXPORTER_VERSION.linux-386.tar.gz rethinkdb_exporter && rm rethinkdb_exporter && cd ..
+      - gox --osarch="netbsd/amd64"  -output "dist/rethinkdb_exporter" && cd dist && tar -cvzf rethinkdb_exporter-$EXPORTER_VERSION.netbsd-amd64.tar.gz rethinkdb_exporter && rm rethinkdb_exporter && cd ..
+      - gox --osarch="netbsd/386"    -output "dist/rethinkdb_exporter" && cd dist && tar -cvzf rethinkdb_exporter-$EXPORTER_VERSION.netbsd-386.tar.gz rethinkdb_exporter && rm rethinkdb_exporter && cd ..
+      - gox --osarch="windows/amd64" -output "dist/rethinkdb_exporter" && cd dist && tar -cvzf rethinkdb_exporter-$EXPORTER_VERSION.windows-amd64.tar.gz rethinkdb_exporter.exe && rm rethinkdb_exporter.exe && cd ..
+      - gox --osarch="windows/386"   -output "dist/rethinkdb_exporter" && cd dist && tar -cvzf rethinkdb_exporter-$EXPORTER_VERSION.windows-386.tar.gz rethinkdb_exporter.exe && rm rethinkdb_exporter.exe && cd ..
+      - ghr -t $GITHUB_TOKEN -u $CIRCLE_PROJECT_USERNAME -r $CIRCLE_PROJECT_REPONAME --replace `git describe --tags` dist/
