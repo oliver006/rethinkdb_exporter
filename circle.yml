@@ -12,7 +12,7 @@ dependencies:
 machine:
   environment:
     IMPORT_PATH: "github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
-    EXPORTER_VERSION: "0.2"
+    COVERAGE_PROFILE: "/home/ubuntu/coverage.out"
 
 
 test:
@@ -21,14 +21,14 @@ test:
     - go get github.com/mattn/goveralls
     - go get golang.org/x/tools/cmd/cover
   override:
-    - go test -v -cover -race -coverprofile=/home/ubuntu/coverage.out .
+    - go test -v -cover -race -coverprofile=$COVERAGE_PROFILE .
   post:
-    - /home/ubuntu/.go_workspace/bin/goveralls -coverprofile=/home/ubuntu/coverage.out -service=circle-ci -repotoken=gpmuonPXNb2U51fNXpoUgblgewMsw1QDF
+    - if [ -n "$COVERALLS_TOKEN" ]; then /home/ubuntu/.go_workspace/bin/goveralls -coverprofile=$COVERAGE_PROFILE -service=circle-ci -repotoken=$COVERALLS_TOKEN ;  fi
 
 
 deployment:
   publish:
-    branch: master
+    tag: /v.*/
     commands:
       - go get github.com/mitchellh/gox
       - go get github.com/tcnksm/ghr
