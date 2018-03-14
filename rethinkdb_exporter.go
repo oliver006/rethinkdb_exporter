@@ -18,6 +18,7 @@ var (
 	addr          = flag.String("db.addr", "localhost:28015", "Address of one or more nodes of the cluster, comma separated")
 	auth          = flag.String("db.auth", "", "Auth key of the RethinkDB cluster")
 	countRows     = flag.Bool("db.count-rows", true, "Count rows per table, turn off if you experience perf. issues with large tables")
+	getTableStats = flag.Bool("table-stats", true, "Get stats for all tables.")
 	clusterName   = flag.String("clustername", "", "Cluster Name, added as label to metrics")
 	namespace     = flag.String("namespace", "rethinkdb", "Namespace for metrics")
 	listenAddress = flag.String("web.listen-address", ":9123", "Address to listen on for web interface and telemetry.")
@@ -194,6 +195,9 @@ func (s *Stat) extractStorageEngineStats(scrapes chan<- scrapeResult) {
 
 func (s *Stat) extractQueryEngineStats(scrapes chan<- scrapeResult) {
 	prefix := s.ID[0]
+	if (prefix == "table" || prefix == "table_server") && !*getTableStats {
+		return
+	}
 	s.extracStructMetrics(prefix, s.QueryEngine, scrapes)
 }
 
@@ -227,7 +231,7 @@ func extractAllMetrics(sess *r.Session, scrapes chan<- scrapeResult) error {
 		case "table":
 			{
 				countTables++
-				if !*countRows {
+				if !*countRows || !*getTableStats {
 					continue
 				}
 				res, err := r.DB(s.DB).Table(s.Table).Count().Run(sess)
@@ -243,6 +247,9 @@ func extractAllMetrics(sess *r.Session, scrapes chan<- scrapeResult) error {
 		case "table_server":
 			{
 				countReplicas++
+				if !*getTableStats {
+					continue
+				}
 				s.extractStorageEngineStats(scrapes)
 			}
 		}
@@ -274,11 +281,13 @@ func (e *Exporter) scrape(scrapes chan<- scrapeResult) {
 		if err := extractAllMetrics(sess, scrapes); err != nil {
 			errCount++
 		}
+		scrapes <- scrapeResult{Name: "up", Value: float64(1)}
 		sess.Close()
 	}
 
 	if err != nil {
 		log.Printf("scrape err: %s", err)
+		scrapes <- scrapeResult{Name: "up", Value: float64(0)}
 	}
 	e.scrapeError.Set(float64(errCount))
 	e.duration.Set(float64(time.Now().UnixNano()-now) / 1000000000)
