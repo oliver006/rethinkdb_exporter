@@ -121,7 +121,7 @@ func TestMetrics(t *testing.T) {
 
 	}
 
-	expectedCountMetrics := 52
+	expectedCountMetrics := 53
 	if countMetrics != expectedCountMetrics {
 		t.Errorf("Expected %d metrics, found %d", expectedCountMetrics, countMetrics)
 	}
@@ -142,7 +142,7 @@ func TestMetrics(t *testing.T) {
 		allDescr = append(allDescr, d)
 	}
 
-	wants := []string{"server_client_connections", "cluster_servers_total", "cluster_client_connections", "table_server_disk_read_bytes_per_sec", "table_server_disk_garbage_bytes"}
+	wants := []string{"server_client_connections", "cluster_servers_total", "cluster_client_connections", "table_server_disk_read_bytes_per_sec", "table_server_disk_garbage_bytes", "up"}
 	for _, w := range wants {
 		found := false
 		for _, d := range allDescr {
@@ -209,7 +209,7 @@ func TestMetricsNoRowCounting(t *testing.T) {
 
 	}
 
-	expectedCountMetrics := 50
+	expectedCountMetrics := 51
 	if countMetrics != expectedCountMetrics {
 		t.Errorf("Expected %d metrics, found %d", expectedCountMetrics, countMetrics)
 	}
@@ -259,8 +259,10 @@ func TestInvalidDB(t *testing.T) {
 	go e.scrape(scrapes)
 
 	neverTrue := false
-	for range scrapes {
-		neverTrue = true
+	for x := range scrapes {
+		if (x.Name != "up") {
+			neverTrue = true
+		}
 	}
 	if neverTrue {
 		t.Errorf("this shouldn't happen")
