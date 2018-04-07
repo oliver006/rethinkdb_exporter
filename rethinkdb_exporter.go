@@ -17,6 +17,8 @@ import (
 var (
 	addr          = flag.String("db.addr", "localhost:28015", "Address of one or more nodes of the cluster, comma separated")
 	auth          = flag.String("db.auth", "", "Auth key of the RethinkDB cluster")
+	user          = flag.String("db.user", "", "Auth user for 2.3+ RethinkDB cluster")
+	pass          = flag.String("db.pass", "", "Auth pass for 2.3+ RethinkDB cluster")
 	countRows     = flag.Bool("db.count-rows", true, "Count rows per table, turn off if you experience perf. issues with large tables")
 	getTableStats = flag.Bool("table-stats", true, "Get stats for all tables.")
 	clusterName   = flag.String("clustername", "", "Cluster Name, added as label to metrics")
@@ -28,6 +30,8 @@ var (
 type Exporter struct {
 	addrs        []string
 	auth         string
+	user		 string
+	pass		 string
 	clusterName  string
 	namespace    string
 	duration     prometheus.Gauge
@@ -37,10 +41,12 @@ type Exporter struct {
 	sync.RWMutex
 }
 
-func NewRethinkDBExporter(addr, auth, clusterName, namespace string) *Exporter {
+func NewRethinkDBExporter(addr, auth, user, pass, clusterName, namespace string) *Exporter {
 	return &Exporter{
 		addrs:       strings.Split(addr, ","),
 		auth:        auth,
+		user:        user,
+		pass:        pass,
 		clusterName: clusterName,
 		namespace:   namespace,
 
@@ -274,6 +280,8 @@ func (e *Exporter) scrape(scrapes chan<- scrapeResult) {
 		Addresses: e.addrs,
 		Database:  "rethinkdb",
 		AuthKey:   e.auth,
+		Username:  e.user,
+		Password:  e.pass,
 	})
 
 	errCount := 0
@@ -343,7 +351,7 @@ func main() {
 		log.Fatal("need parameter addr with len > 0 to connect to RethinkDB cluster")
 	}
 
-	exporter := NewRethinkDBExporter(*addr, *auth, *clusterName, *namespace)
+	exporter := NewRethinkDBExporter(*addr, *auth, *user, *pass, *clusterName, *namespace)
 	prometheus.MustRegister(exporter)
 
 	http.Handle(*metricPath, prometheus.Handler())
