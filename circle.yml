@@ -8,6 +8,8 @@ machine:
 
 dependencies:
   pre:
+    - rm -rf /home/ubuntu/.go_workspace
+    - rm -rf /home/ubuntu/.go_project
     - sudo ntpdate -b -s -u pool.ntp.org
     - source /etc/lsb-release && echo "deb http://download.rethinkdb.com/apt $DISTRIB_CODENAME main" | sudo tee /etc/apt/sources.list.d/rethinkdb.list
     - wget -qO- http://download.rethinkdb.com/apt/pubkey.gpg | sudo apt-key add -
@@ -18,6 +20,8 @@ dependencies:
   override:
     - mkdir -p "/home/ubuntu/.go_workspace/src/github.com/$CIRCLE_PROJECT_USERNAME"
     - ln -s $HOME/$CIRCLE_PROJECT_REPONAME $SRC_LOCATION
+    - echo "ln -s $HOME/$CIRCLE_PROJECT_REPONAME $SRC_LOCATION"
+
 
 
 test:
@@ -29,7 +33,7 @@ test:
     - go get github.com/mattn/goveralls
     - go get golang.org/x/tools/cmd/cover
   override:
-    - go test -v -cover -race -coverprofile=$COVERAGE_PROFILE .
+    - cd $SRC_LOCATION && go test -v -cover -race -coverprofile=$COVERAGE_PROFILE .
   post:
     - if [ -n "$COVERALLS_TOKEN" ]; then /home/ubuntu/.go_workspace/bin/goveralls -coverprofile=$COVERAGE_PROFILE -service=circle-ci -repotoken=$COVERALLS_TOKEN ;  fi
 
