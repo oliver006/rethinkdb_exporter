@@ -1,0 +1,5 @@
+1.  Connect to your rethinkdb-exporter externally with:
+      export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app={{ template "rethinkdb_exporter.name" . }}" -o jsonpath="{.items[0].metadata.name}")
+      kubectl port-forward $POD_NAME {{ .Values.service.port }}
+
+2.  Service is annotated with `prometheus.io/scrape: 'true'`.  Prometheus should pick it up for scraping automatically.

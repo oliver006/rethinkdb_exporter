@@ -1,0 +1,58 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: {{ template "rethinkdb_exporter.fullname" . }}
+  labels:
+    app: {{ template "rethinkdb_exporter.name" . }}
+    chart: {{ template "rethinkdb_exporter.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ template "rethinkdb_exporter.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "rethinkdb_exporter.name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: [
+            "--db.addr={{ .Values.rethinkdb_exporter.dbaddr }}",
+            "--db.auth={{ .Values.rethinkdb_exporter.dbauth }}",
+            "--db.user={{ .Values.rethinkdb_exporter.dbuser }}",
+            "--db.pass={{ .Values.rethinkdb_exporter.dbpass }}",
+            "--clustername={{ .Values.rethinkdb_exporter.clustername }}"
+          ]
+          ports:
+            - name: http
+              containerPort: 9123
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}

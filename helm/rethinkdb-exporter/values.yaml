@@ -1,0 +1,35 @@
+# Default values for rethinkdb_exporter.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: oliver006/rethinkdb_exporter
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 9123
+
+resources: {}
+  # limits:
+  #  cpu: 100m
+  #  memory: 128Mi
+  # requests:
+  #  cpu: 100m
+  #  memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+rethinkdb_exporter:
+  dbaddr: rethinkdb-a-rethinkdb-cluster-0.rethinkdb-a-rethinkdb-cluster:28015,rethinkdb-a-rethinkdb-cluster-1.rethinkdb-a-rethinkdb-cluster:28015,rethinkdb-a-rethinkdb-cluster-2.rethinkdb-a-rethinkdb-cluster:28015
+  dbauth: 
+  dbuser: admin
+  dbpass: 
+  clustername: rethinkdb
