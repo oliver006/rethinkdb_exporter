@@ -1,4 +1,4 @@
-# RethinkDB Metrics Exporter
+# RethinkDB Prometheus Metrics Exporter
 [![Circle CI](https://circleci.com/gh/oliver006/rethinkdb_exporter.svg?style=shield)](https://circleci.com/gh/oliver006/rethinkdb_exporter) [![Coverage Status](https://coveralls.io/repos/github/oliver006/rethinkdb_exporter/badge.svg?branch=master)](https://coveralls.io/github/oliver006/rethinkdb_exporter?branch=master)
 
 Prometheus exporter for RethinkDB cluster, server and table metrics.<br>
@@ -6,8 +6,21 @@ Supports RethinkDB 2.x
 
 ## Building and running
 
-    go build
-    ./rethinkdb_exporter <flags>
+Locally build and run:
+
+```
+    $ git clone https://github.com/oliver006/rethinkdb_exporter.git
+    $ cd rethinkdb_exporter
+    $ go build
+    $ ./rethinkdb_exporter <flags>
+```
+
+Or via docker:
+
+```
+    $ docker pull oliver006/rethinkdb_exporter
+    $ docker run -d --name rethinkdb_exporter -p 9123:9123 oliver006/rethinkdb_exporter
+```
 
 ### Flags
 
@@ -21,7 +34,7 @@ db.count-rows      | Count rows per table, turn off if you experience perf. issu
 db.table-stats     | Get stats for all tables.
 clustername        | Name of the cluster, if set it's added as a label to the metrics.
 namespace          | Namespace for the metrics, defaults to "rethinkdb".
-web.listen-address | Address to listen on for web interface and telemetry.
+web.listen-address | Address to listen on for web interface and telemetry, default `:9123`
 web.telemetry-path | Path under which to expose metrics.
 
 
