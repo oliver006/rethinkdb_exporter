@@ -14,7 +14,9 @@ Supports RethinkDB 2.x and 1.6.x (and possibly older versions)
 Name               | Description
 -------------------|------------
 db.addr            | Address of one or more nodes of the cluster, comma separated.
-db.auth            | Auth key of the RethinkDB cluster.
+db.auth            | Auth key of the RethinkDB cluster (for versions < 2.3)
+db.user            | Username for RethinkDB connection (for versions >= 2.3) (must be `admin` if used; see below)
+db.pass            | Password for RethinkDB connection (for versions >= 2.3)
 db.count-rows      | Count rows per table, turn off if you experience perf. issues with large tables
 db.table-stats     | Get stats for all tables.
 clustername        | Name of the cluster, if set it's added as a label to the metrics.
@@ -38,6 +40,12 @@ Metric names are `rethinkdb_cluster_[servers|server_errors|tables|replicas]_tota
 [Grafana](https://github.com/grafana) dashboard is available [here](https://grafana.com/dashboards/5043):<br>
 ![rethink_exporter_dashboard](https://grafana.com/api/dashboards/5043/images/3108/image)
 
+
+### v2.3+ Auth
+
+In v2.3 RethinkDB [moved](https://www.compose.com/articles/using-rethinkdb-2-3s-user-authentication/) to a username/password authentication system.  For compatibility with this use the `--db.user` and `--db.pass` options.
+
+It would be good to use a dedicated read-only user for this but the RethinkDB [docs](https://rethinkdb.com/docs/system-stats/) say "the jobs table can only be accessed by the admin user account".  Thus you'll have to use `--db.user=admin`. 
 
 
 ### What else?
