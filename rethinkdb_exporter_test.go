@@ -260,7 +260,7 @@ func TestInvalidDB(t *testing.T) {
 
 	neverTrue := false
 	for x := range scrapes {
-		if (x.Name != "up") {
+		if x.Name != "up" {
 			neverTrue = true
 		}
 	}

@@ -30,8 +30,8 @@ var (
 type Exporter struct {
 	addrs        []string
 	auth         string
-	user		 string
-	pass		 string
+	user         string
+	pass         string
 	clusterName  string
 	namespace    string
 	duration     prometheus.Gauge
