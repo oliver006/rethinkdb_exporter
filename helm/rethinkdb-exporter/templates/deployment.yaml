@@ -1,4 +1,4 @@
-apiVersion: apps/v1beta2
+apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
   name: {{ template "rethinkdb_exporter.fullname" . }}
@@ -28,6 +28,7 @@ spec:
             "--db.auth={{ .Values.rethinkdb_exporter.dbauth }}",
             "--db.user={{ .Values.rethinkdb_exporter.dbuser }}",
             "--db.pass={{ .Values.rethinkdb_exporter.dbpass }}",
+            "--db.count-rows={{ .Values.rethinkdb_exporter.count_rows }}",
             "--clustername={{ .Values.rethinkdb_exporter.clustername }}"
           ]
           ports:
