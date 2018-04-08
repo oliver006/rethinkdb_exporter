@@ -2,6 +2,12 @@
 
 
 [[projects]]
+  name = "github.com/GoRethink/gorethink"
+  packages = ["."]
+  revision = "eec03bd47cfc11965a9de004ff86add2a88e65b0"
+  version = "v4.0.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/beorn7/perks"
   packages = ["quantile"]
@@ -12,12 +18,6 @@
   packages = ["."]
   revision = "2ea60e5f094469f9e65adb9cd103795b73ae743e"
   version = "v2.0.0"
-
-[[projects]]
-  name = "github.com/dancannon/gorethink"
-  packages = ["."]
-  revision = "eec03bd47cfc11965a9de004ff86add2a88e65b0"
-  version = "v4.0.0"
 
 [[projects]]
   name = "github.com/golang/protobuf"
@@ -129,6 +129,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "2607747ad120bca469ad284bb9959e3e78d7f2baf5e5c8d9ba1395c653cffd02"
+  inputs-digest = "cee18969f6b6c59975565537a2621a80de354507dcaa60b0634603372eec51d2"
   solver-name = "gps-cdcl"
   solver-version = 1

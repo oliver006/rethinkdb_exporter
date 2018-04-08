@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	r "github.com/dancannon/gorethink"
+	r "github.com/GoRethink/gorethink"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 )
