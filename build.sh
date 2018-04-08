@@ -2,6 +2,30 @@
 
 export CGO_ENABLED=0
 
+gox --osarch="linux/386"   -ldflags "$GO_LDFLAGS" -output "dist/rethinkdb_exporter"
+
+echo "Build Docker images"
+
+docker version
+
+echo "docker login"
+docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS
+docker info
+echo "docker login done"
+
+docker build --rm=false -t "21zoo/rethinkdb_exporter:$CIRCLE_TAG" .
+docker build --rm=false -t "21zoo/rethinkdb_exporter:latest" .
+
+docker push "21zoo/rethinkdb_exporter:latest"
+docker push "21zoo/rethinkdb_exporter:$CIRCLE_TAG"
+
+docker build --rm=false -t "oliver006/rethinkdb_exporter:$CIRCLE_TAG" .
+docker build --rm=false -t "oliver006/rethinkdb_exporter:latest" .
+docker push "oliver006/rethinkdb_exporter:latest"
+docker push "oliver006/rethinkdb_exporter:$CIRCLE_TAG"
+
+
+
 echo "Building binaries"
 echo ""
 echo $GO_LDFLAGS
@@ -17,26 +41,5 @@ gox -rebuild --osarch="windows/386"   -ldflags "$GO_LDFLAGS" -output "dist/rethi
 
 echo "Upload to Github"
 ghr -t $GITHUB_TOKEN -u $CIRCLE_PROJECT_USERNAME -r $CIRCLE_PROJECT_REPONAME --replace $CIRCLE_TAG dist/
-
-docker version
-
-gox --osarch="linux/386"   -ldflags "$GO_LDFLAGS" -output "dist/rethinkdb_exporter"
-
-echo "Build Docker images"
-
-echo "docker login"
-docker login -u $DOCKER_USER -p $DOCKER_PASS
-echo "docker login done"
-
-docker build --rm=false -t "21zoo/rethinkdb_exporter:$CIRCLE_TAG" .
-docker build --rm=false -t "21zoo/rethinkdb_exporter:latest" .
-
-docker push "21zoo/rethinkdb_exporter:latest"
-docker push "21zoo/rethinkdb_exporter:$CIRCLE_TAG"
-
-docker build --rm=false -t "oliver006/rethinkdb_exporter:$CIRCLE_TAG" .
-docker build --rm=false -t "oliver006/rethinkdb_exporter:latest" .
-docker push "oliver006/rethinkdb_exporter:latest"
-docker push "oliver006/rethinkdb_exporter:$CIRCLE_TAG"
 
 echo "Done"
