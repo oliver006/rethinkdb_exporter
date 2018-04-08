@@ -14,6 +14,7 @@ machine:
     IMPORT_PATH: "github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
     COVERAGE_PROFILE: "/home/ubuntu/coverage.out"
     MY_GO_VERSION:      "1.9.4"
+    SRC_LOCATION:       "/home/ubuntu/.go_workspace/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
 
 
 test:
@@ -45,3 +46,5 @@ deployment:
       - gox --osarch="windows/amd64" -output "dist/rethinkdb_exporter" && cd dist && tar -cvzf rethinkdb_exporter-$EXPORTER_VERSION.windows-amd64.tar.gz rethinkdb_exporter.exe && rm rethinkdb_exporter.exe && cd ..
       - gox --osarch="windows/386"   -output "dist/rethinkdb_exporter" && cd dist && tar -cvzf rethinkdb_exporter-$EXPORTER_VERSION.windows-386.tar.gz rethinkdb_exporter.exe && rm rethinkdb_exporter.exe && cd ..
       - ghr -t $GITHUB_TOKEN -u $CIRCLE_PROJECT_USERNAME -r $CIRCLE_PROJECT_REPONAME --replace `git describe --tags` dist/
+      - echo "Docker build"
+      - cd $SRC_LOCATION && ./build.sh
