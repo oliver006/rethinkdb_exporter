@@ -1,0 +1,18 @@
+[prune]
+  non-go = true
+  go-tests = true
+  unused-packages = true
+
+
+[[constraint]]
+  name = "github.com/dancannon/gorethink"
+  version = "4.0.0"
+
+[[constraint]]
+  name = "github.com/prometheus/client_golang"
+  version = "0.8.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/prometheus/client_model"
+
