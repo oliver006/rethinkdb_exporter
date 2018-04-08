@@ -13,10 +13,12 @@ machine:
   environment:
     IMPORT_PATH: "github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
     COVERAGE_PROFILE: "/home/ubuntu/coverage.out"
+    MY_GO_VERSION:      "1.9.4"
 
 
 test:
   pre:
+    - wget https://storage.googleapis.com/golang/go$MY_GO_VERSION.linux-amd64.tar.gz &&  sudo rm -rf /usr/local/go/ &&  sudo tar -C /usr/local -xzf go$MY_GO_VERSION.linux-amd64.tar.gz
     - go version
     - go vet ./...
     - go get github.com/mattn/goveralls
