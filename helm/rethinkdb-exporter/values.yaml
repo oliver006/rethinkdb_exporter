@@ -33,3 +33,4 @@ rethinkdb_exporter:
   dbuser: admin
   dbpass: 
   clustername: rethinkdb
+  count_rows: true
