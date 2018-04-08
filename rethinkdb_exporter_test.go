@@ -83,7 +83,7 @@ func TestMetrics(t *testing.T) {
 	}
 	defer r.DBDrop(dbName).Run(sess)
 
-	e := NewRethinkDBExporter("localhost:28015", "", "test", "")
+	e := NewRethinkDBExporter("localhost:28015", "", "", "", "test", "")
 	e.metrics = map[string]*prometheus.GaugeVec{}
 
 	chM := make(chan prometheus.Metric)
@@ -173,7 +173,7 @@ func TestMetricsNoRowCounting(t *testing.T) {
 
 	*countRows = false
 
-	e := NewRethinkDBExporter("localhost:28015", "", "test", "")
+	e := NewRethinkDBExporter("localhost:28015", "", "", "", "test", "")
 	e.metrics = map[string]*prometheus.GaugeVec{}
 
 	chM := make(chan prometheus.Metric)
@@ -252,7 +252,7 @@ func TestMetricsNoRowCounting(t *testing.T) {
 
 func TestInvalidDB(t *testing.T) {
 
-	e := NewRethinkDBExporter("localhost:1", "", "test", "")
+	e := NewRethinkDBExporter("localhost:1", "", "", "", "test", "")
 	e.metrics = map[string]*prometheus.GaugeVec{}
 
 	scrapes := make(chan scrapeResult)

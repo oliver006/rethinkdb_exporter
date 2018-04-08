@@ -1,3 +1,11 @@
+machine:
+  environment:
+    IMPORT_PATH: "github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
+    COVERAGE_PROFILE: "/home/ubuntu/coverage.out"
+    MY_GO_VERSION:      "1.9.4"
+    SRC_LOCATION:       "/home/ubuntu/.go_workspace/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
+
+
 dependencies:
   pre:
     - sudo ntpdate -b -s -u pool.ntp.org
@@ -7,14 +15,9 @@ dependencies:
     - sudo apt-get install rethinkdb
     - sudo cp /etc/rethinkdb/default.conf.sample /etc/rethinkdb/instances.d/instance1.conf
     - sudo /etc/init.d/rethinkdb restart
-
-
-machine:
-  environment:
-    IMPORT_PATH: "github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
-    COVERAGE_PROFILE: "/home/ubuntu/coverage.out"
-    MY_GO_VERSION:      "1.9.4"
-    SRC_LOCATION:       "/home/ubuntu/.go_workspace/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME"
+  override:
+    - mkdir -p "/home/ubuntu/.go_workspace/src/github.com/$CIRCLE_PROJECT_USERNAME"
+    - ln -s $HOME/$CIRCLE_PROJECT_REPONAME $SRC_LOCATION
 
 
 test:
