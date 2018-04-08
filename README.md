@@ -25,12 +25,14 @@ Or via docker:
 
 ## Deploying
 
-A [Helm](https://helm.sh/) chart is included under `helm/` for installing the rethinkdb_exporter on Kubernetes clusters.  Installing it is as simple as:
+A [Helm](https://helm.sh/) chart is included under `helm/` for installing the rethinkdb_exporter on Kubernetes clusters.  You'll need one of these per RethinkDB cluster you run.
+
+Installing it is as simple as:
 
 ```
 $ cd helm/rethinkdb-exporter
 $ helm install \
-    --name=rethinkdb-exporter  \
+    --name=rethinkdb-exporter-for-clustername  \
     --set=rethinkdb_exporter.dbaddr=my-rethinkdb-server:28015  \
     --set=rethinkdb_exporter.dbpass=mypassword  \
     --set=rethinkdb_exporter.clustername=myclustername  \
