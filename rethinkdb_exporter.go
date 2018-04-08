@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	r "github.com/dancannon/gorethink"
+	r "github.com/GoRethink/gorethink"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -30,8 +30,8 @@ var (
 type Exporter struct {
 	addrs        []string
 	auth         string
-	user		 string
-	pass		 string
+	user         string
+	pass         string
 	clusterName  string
 	namespace    string
 	duration     prometheus.Gauge

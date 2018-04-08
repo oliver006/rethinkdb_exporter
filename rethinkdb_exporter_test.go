@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	r "github.com/dancannon/gorethink"
+	r "github.com/GoRethink/gorethink"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 )
@@ -83,7 +83,7 @@ func TestMetrics(t *testing.T) {
 	}
 	defer r.DBDrop(dbName).Run(sess)
 
-	e := NewRethinkDBExporter("localhost:28015", "", "test", "")
+	e := NewRethinkDBExporter("localhost:28015", "", "", "", "test", "")
 	e.metrics = map[string]*prometheus.GaugeVec{}
 
 	chM := make(chan prometheus.Metric)
@@ -173,7 +173,7 @@ func TestMetricsNoRowCounting(t *testing.T) {
 
 	*countRows = false
 
-	e := NewRethinkDBExporter("localhost:28015", "", "test", "")
+	e := NewRethinkDBExporter("localhost:28015", "", "", "", "test", "")
 	e.metrics = map[string]*prometheus.GaugeVec{}
 
 	chM := make(chan prometheus.Metric)
@@ -252,7 +252,7 @@ func TestMetricsNoRowCounting(t *testing.T) {
 
 func TestInvalidDB(t *testing.T) {
 
-	e := NewRethinkDBExporter("localhost:1", "", "test", "")
+	e := NewRethinkDBExporter("localhost:1", "", "", "", "test", "")
 	e.metrics = map[string]*prometheus.GaugeVec{}
 
 	scrapes := make(chan scrapeResult)
@@ -260,7 +260,7 @@ func TestInvalidDB(t *testing.T) {
 
 	neverTrue := false
 	for x := range scrapes {
-		if (x.Name != "up") {
+		if x.Name != "up" {
 			neverTrue = true
 		}
 	}
