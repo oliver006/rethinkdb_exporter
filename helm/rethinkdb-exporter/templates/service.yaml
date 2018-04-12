@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "rethinkdb_exporter.fullname" . }}
+  labels:
+    app: {{ template "rethinkdb_exporter.name" . }}
+    chart: {{ template "rethinkdb_exporter.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+  annotations:
+    prometheus.io/scrape: 'true'
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: {{ template "rethinkdb_exporter.name" . }}
+    release: {{ .Release.Name }}

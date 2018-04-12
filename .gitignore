@@ -1,2 +1,5 @@
 src/
 rethinkdb_exporter
+
+# Sublimetext projects
+*.sublime-*
