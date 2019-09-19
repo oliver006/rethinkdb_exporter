@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,20 +10,22 @@ import (
 	"time"
 
 	r "github.com/GoRethink/gorethink"
+	"github.com/namsral/flag"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 var (
-	addr          = flag.String("db.addr", "localhost:28015", "Address of one or more nodes of the cluster, comma separated")
-	auth          = flag.String("db.auth", "", "Auth key of the RethinkDB cluster")
-	user          = flag.String("db.user", "", "Auth user for 2.3+ RethinkDB cluster")
-	pass          = flag.String("db.pass", "", "Auth pass for 2.3+ RethinkDB cluster")
-	countRows     = flag.Bool("db.count-rows", true, "Count rows per table, turn off if you experience perf. issues with large tables")
-	getTableStats = flag.Bool("table-stats", true, "Get stats for all tables.")
+	addr          = flag.String("db_addr", "localhost:28015", "Address of one or more nodes of the cluster, comma separated")
+	auth          = flag.String("db_auth", "", "Auth key of the RethinkDB cluster")
+	user          = flag.String("db_user", "", "Auth user for 2.3+ RethinkDB cluster")
+	pass          = flag.String("db_pass", "", "Auth pass for 2.3+ RethinkDB cluster")
+	countRows     = flag.Bool("db_countrows", true, "Count rows per table, turn off if you experience perf. issues with large tables")
+	getTableStats = flag.Bool("db_tablestats", true, "Get stats for all tables.")
 	clusterName   = flag.String("clustername", "", "Cluster Name, added as label to metrics")
 	namespace     = flag.String("namespace", "rethinkdb", "Namespace for metrics")
-	listenAddress = flag.String("web.listen-address", ":9123", "Address to listen on for web interface and telemetry.")
-	metricPath    = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
+	listenAddress = flag.String("web_listenaddress", ":9123", "Address to listen on for web interface and telemetry.")
+	metricPath    = flag.String("web_telemetrypath", "/metrics", "Path under which to expose metrics.")
+	configFile    = flag.String(flag.DefaultConfigFlagname, "", "Path to config file")
 )
 
 type Exporter struct {

@@ -24,11 +24,11 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args: [
-            "--db.addr={{ .Values.rethinkdb_exporter.dbaddr }}",
-            "--db.auth={{ .Values.rethinkdb_exporter.dbauth }}",
-            "--db.user={{ .Values.rethinkdb_exporter.dbuser }}",
-            "--db.pass={{ .Values.rethinkdb_exporter.dbpass }}",
-            "--db.count-rows={{ .Values.rethinkdb_exporter.count_rows }}",
+            "--db_addr={{ .Values.rethinkdb_exporter.dbaddr }}",
+            "--db_auth={{ .Values.rethinkdb_exporter.dbauth }}",
+            "--db_user={{ .Values.rethinkdb_exporter.dbuser }}",
+            "--db_pass={{ .Values.rethinkdb_exporter.dbpass }}",
+            "--db_countrows={{ .Values.rethinkdb_exporter.count_rows }}",
             "--clustername={{ .Values.rethinkdb_exporter.clustername }}"
           ]
           ports:

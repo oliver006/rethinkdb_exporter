@@ -44,16 +44,38 @@ $ helm install \
 
 Name               | Description
 -------------------|------------
-db.addr            | Address of one or more nodes of the cluster, comma separated.
-db.auth            | Auth key of the RethinkDB cluster (for versions < 2.3)
-db.user            | Username for RethinkDB connection (for versions >= 2.3) (must be `admin` if used; see below)
-db.pass            | Password for RethinkDB connection (for versions >= 2.3)
-db.count-rows      | Count rows per table, turn off if you experience perf. issues with large tables
-db.table-stats     | Get stats for all tables.
+db_addr            | Address of one or more nodes of the cluster, comma separated.
+db_auth            | Auth key of the RethinkDB cluster (for versions < 2.3)
+db_user            | Username for RethinkDB connection (for versions >= 2.3) (must be `admin` if used; see below)
+db_pass            | Password for RethinkDB connection (for versions >= 2.3)
+db_countrows       | Count rows per table, turn off if you experience perf. issues with large tables
+db_tablestats      | Get stats for all tables.
 clustername        | Name of the cluster, if set it's added as a label to the metrics.
 namespace          | Namespace for the metrics, defaults to "rethinkdb".
-web.listen-address | Address to listen on for web interface and telemetry, default `:9123`
-web.telemetry-path | Path under which to expose metrics.
+web_listenaddress  | Address to listen on for web interface and telemetry, default `:9123`
+web_telemetrypath  | Path under which to expose metrics.
+config             | Path to config file
+
+Flags can either be passed on the command line 
+```
+$ rethinkdb_exporter --db_user foo --db_pass bar
+```
+
+Or they can be passed as (uppercase) environment variables 
+```
+$ export DB_USER=foo 
+$ export DB_PASS=bar
+$ rethinkdb_exporter
+```
+
+Or in a config file
+```
+$ cat > rethinkdb_exporter.conf
+db_user foo
+db_pass bar
+
+$ rethinkdb_exporter --config rethinkdb_exporter.conf
+```
 
 
 ### What's exported?
@@ -74,7 +96,7 @@ Metric names are `rethinkdb_cluster_[servers|server_errors|tables|replicas]_tota
 
 ### v2.3+ Auth
 
-In v2.3 RethinkDB [moved](https://www.compose.com/articles/using-rethinkdb-2-3s-user-authentication/) to a username/password authentication system.  For compatibility with this use the `--db.user` and `--db.pass` options.
+In v2.3 RethinkDB [moved](https://www.compose.com/articles/using-rethinkdb-2-3s-user-authentication/) to a username/password authentication system.  For compatibility with this use the `--db_user` and `--db_pass` options.
 
 It would be good to use a dedicated read-only user for this but the RethinkDB [docs](https://rethinkdb.com/docs/system-stats/) say "the jobs table can only be accessed by the admin user account".  Thus you'll have to use `--db.user=admin`. 
 
