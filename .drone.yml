@@ -1,0 +1,39 @@
+kind: pipeline
+name: default
+
+workspace:
+  base: /go
+  path: src/github.com/oliver006/rethinkdb_exporter
+
+
+services:
+- name: database
+  image: rethinkdb:2
+  command: [ rethinkdb, --bind, all ]
+  ports:
+    - 28015
+
+
+steps:
+  - name: tests
+    image: "golang:1.13"
+    environment:
+      GO111MODULE: on
+      RETHINKDB_URI: "database:28015"
+      COVERALLS_TOKEN:
+        from_secret: coveralls-token
+    commands:
+      - 'go build -mod=vendor'
+      - "sleep 10"   # let the DB test instances all come up first
+      - 'go test -mod=vendor -v -covermode=atomic -cover -race -coverprofile=coverage.txt .'
+      - 'echo "checking gofmt"'
+      - 'echo " ! gofmt -d *.go       2>&1 | read " | bash'
+      - 'echo "checking gofmt - DONE"'
+      - 'go vet -mod=vendor .'
+      - 'go get github.com/mattn/goveralls'
+      - '/go/bin/goveralls -coverprofile=coverage.txt -service=drone.io'
+    when:
+      event:
+        - pull_request
+        - push
+

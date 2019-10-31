@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"os"
 
 	r "github.com/GoRethink/gorethink"
 	"github.com/prometheus/client_golang/prometheus"
@@ -26,7 +27,7 @@ func setupDB(t *testing.T) (sess *r.Session, dbName string, err error) {
 	dbName = fmt.Sprintf("db%d", int32(time.Now().Unix()))
 
 	sess, err = r.Connect(r.ConnectOpts{
-		Address:  "localhost:28015",
+		Address:  os.Getenv("RETHINKDB_URI"),
 		Database: dbName,
 	})
 	if err != nil {
@@ -83,7 +84,7 @@ func TestMetrics(t *testing.T) {
 	}
 	defer r.DBDrop(dbName).Run(sess)
 
-	e := NewRethinkDBExporter("localhost:28015", "", "", "", "test", "")
+	e := NewRethinkDBExporter(os.Getenv("RETHINKDB_URI"), "", "", "", "test", "")
 	e.metrics = map[string]*prometheus.GaugeVec{}
 
 	chM := make(chan prometheus.Metric)
@@ -173,7 +174,7 @@ func TestMetricsNoRowCounting(t *testing.T) {
 
 	*countRows = false
 
-	e := NewRethinkDBExporter("localhost:28015", "", "", "", "test", "")
+	e := NewRethinkDBExporter(os.Getenv("RETHINKDB_URI"), "", "", "", "test", "")
 	e.metrics = map[string]*prometheus.GaugeVec{}
 
 	chM := make(chan prometheus.Metric)
