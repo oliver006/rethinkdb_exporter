@@ -8,10 +8,10 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 	"strings"
 	"testing"
 	"time"
-	"os"
 
 	r "github.com/GoRethink/gorethink"
 	"github.com/prometheus/client_golang/prometheus"
