@@ -7,6 +7,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -265,11 +266,8 @@ func TestMetricsNoRowCounting(t *testing.T) {
 
 func TestInvalidDB(t *testing.T) {
 
-	rc, err := connectRethinkdb("localhost:1", "", "", "", nil)
-	if err != nil {
-		t.Errorf("DB connect failed")
-		return
-	}
+	rc := r.NewMock()
+	rc.On(r.Table("stats")).Return(nil, io.EOF)
 
 	e := NewRethinkDBExporter("test", "", rc)
 	e.metrics = map[string]*prometheus.GaugeVec{}
