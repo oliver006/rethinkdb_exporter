@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	r "github.com/GoRethink/gorethink"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 )
 
 var (
@@ -84,7 +84,13 @@ func TestMetrics(t *testing.T) {
 	}
 	defer r.DBDrop(dbName).Run(sess)
 
-	e := NewRethinkDBExporter(os.Getenv("RETHINKDB_URI"), "", "", "", "test", "")
+	rc, err := connectRethinkdb(os.Getenv("RETHINKDB_URI"), "", "", "", nil)
+	if err != nil {
+		t.Errorf("DB connect failed")
+		return
+	}
+
+	e := NewRethinkDBExporter("test", "", rc)
 	e.metrics = map[string]*prometheus.GaugeVec{}
 
 	chM := make(chan prometheus.Metric)
@@ -174,7 +180,13 @@ func TestMetricsNoRowCounting(t *testing.T) {
 
 	*countRows = false
 
-	e := NewRethinkDBExporter(os.Getenv("RETHINKDB_URI"), "", "", "", "test", "")
+	rc, err := connectRethinkdb(os.Getenv("RETHINKDB_URI"), "", "", "", nil)
+	if err != nil {
+		t.Errorf("DB connect failed")
+		return
+	}
+
+	e := NewRethinkDBExporter("test", "", rc)
 	e.metrics = map[string]*prometheus.GaugeVec{}
 
 	chM := make(chan prometheus.Metric)
@@ -253,7 +265,13 @@ func TestMetricsNoRowCounting(t *testing.T) {
 
 func TestInvalidDB(t *testing.T) {
 
-	e := NewRethinkDBExporter("localhost:1", "", "", "", "test", "")
+	rc, err := connectRethinkdb("localhost:1", "", "", "", nil)
+	if err != nil {
+		t.Errorf("DB connect failed")
+		return
+	}
+
+	e := NewRethinkDBExporter("test", "", rc)
 	e.metrics = map[string]*prometheus.GaugeVec{}
 
 	scrapes := make(chan scrapeResult)
