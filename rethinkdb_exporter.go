@@ -23,6 +23,7 @@ var (
 	caFile        = flag.String("db.tls.ca", "", "CA file for certificate")
 	certFile      = flag.String("db.tls.cert", "", "Certificate for TLS connection")
 	keyFile       = flag.String("db.tls.key", "", "Key file for certificate")
+	tlsEnable     = flag.Bool("db.tls.enable", false, "Enable tls for connection to db")
 	countRows     = flag.Bool("db.count-rows", true, "Count rows per table, turn off if you experience perf. issues with large tables")
 	getTableStats = flag.Bool("table-stats", true, "Get stats for all tables.")
 	clusterName   = flag.String("clustername", "", "Cluster Name, added as label to metrics")
@@ -355,7 +356,7 @@ func main() {
 	}
 
 	var tlsConfig *tls.Config
-	if len(*certFile) != 0 || len(*keyFile) != 0 {
+	if *tlsEnable {
 		var err error
 		tlsConfig, err = prepareTLSConfig(*caFile, *certFile, *keyFile)
 		if err != nil {

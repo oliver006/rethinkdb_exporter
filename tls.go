@@ -9,18 +9,20 @@ import (
 )
 
 func prepareTLSConfig(caFile, certFile, keyFile string) (*tls.Config, error) {
-	if len(certFile) == 0 || len(keyFile) == 0 {
-		return nil, errors.New("cert file and key file must be both specified")
-	}
-
 	config := new(tls.Config)
 
-	cert, err := tls.LoadX509KeyPair(certFile, keyFile)
-	if err != nil {
-		return nil, fmt.Errorf("TLS file load error: %v", err)
-	}
+	if len(certFile) != 0 || len(keyFile) != 0 {
+		if len(certFile) == 0 || len(keyFile) == 0 {
+			return nil, errors.New("cert file and key file must be both specified")
+		}
 
-	config.Certificates = []tls.Certificate{cert}
+		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+		if err != nil {
+			return nil, fmt.Errorf("TLS file load error: %v", err)
+		}
+
+		config.Certificates = []tls.Certificate{cert}
+	}
 
 	if len(caFile) != 0 {
 		ca, err := ioutil.ReadFile(caFile)
