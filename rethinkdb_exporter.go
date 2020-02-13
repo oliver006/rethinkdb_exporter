@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"log"
@@ -10,8 +11,8 @@ import (
 	"sync"
 	"time"
 
-	r "github.com/GoRethink/gorethink"
 	"github.com/prometheus/client_golang/prometheus"
+	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 )
 
 var (
@@ -19,6 +20,9 @@ var (
 	auth          = flag.String("db.auth", "", "Auth key of the RethinkDB cluster")
 	user          = flag.String("db.user", "", "Auth user for 2.3+ RethinkDB cluster")
 	pass          = flag.String("db.pass", "", "Auth pass for 2.3+ RethinkDB cluster")
+	caFile        = flag.String("db.tls.ca", "", "CA file for certificate")
+	certFile      = flag.String("db.tls.cert", "", "Certificate for TLS connection")
+	keyFile       = flag.String("db.tls.key", "", "Key file for certificate")
 	countRows     = flag.Bool("db.count-rows", true, "Count rows per table, turn off if you experience perf. issues with large tables")
 	getTableStats = flag.Bool("table-stats", true, "Get stats for all tables.")
 	clusterName   = flag.String("clustername", "", "Cluster Name, added as label to metrics")
@@ -28,10 +32,7 @@ var (
 )
 
 type Exporter struct {
-	addrs        []string
-	auth         string
-	user         string
-	pass         string
+	rconn        r.QueryExecutor
 	clusterName  string
 	namespace    string
 	duration     prometheus.Gauge
@@ -41,12 +42,10 @@ type Exporter struct {
 	sync.RWMutex
 }
 
-func NewRethinkDBExporter(addr, auth, user, pass, clusterName, namespace string) *Exporter {
+func NewRethinkDBExporter(clusterName, namespace string, rconn r.QueryExecutor) *Exporter {
 	return &Exporter{
-		addrs:       strings.Split(addr, ","),
-		auth:        auth,
-		user:        user,
-		pass:        pass,
+		rconn: rconn,
+
 		clusterName: clusterName,
 		namespace:   namespace,
 
@@ -207,7 +206,27 @@ func (s *Stat) extractQueryEngineStats(scrapes chan<- scrapeResult) {
 	s.extracStructMetrics(prefix, s.QueryEngine, scrapes)
 }
 
-func extractAllMetrics(sess *r.Session, scrapes chan<- scrapeResult) error {
+func countTableDocs(server, db, table string, sess r.QueryExecutor, scrapes chan<- scrapeResult, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	res, err := r.DB(db).Table(table).Info().Run(sess)
+	if err != nil {
+		log.Printf("failed to get table info: %v", err)
+		return
+	}
+	var info struct {
+		DocCount []float64 `gorethink:"doc_count_estimates"`
+	}
+	if err = res.One(&info); err != nil {
+		log.Printf("failed to read table info: %v", err)
+		return
+	}
+	if len(info.DocCount) > 0 {
+		scrapes <- (&Stat{Server: server, DB: db, Table: table}).newScrapeResult("table_docs_total", info.DocCount[0])
+	}
+}
+
+func extractAllMetrics(sess r.QueryExecutor, scrapes chan<- scrapeResult) error {
 
 	res, err := r.Table("stats").Run(sess)
 	if err != nil {
@@ -218,6 +237,8 @@ func extractAllMetrics(sess *r.Session, scrapes chan<- scrapeResult) error {
 	countServerErrors := 0
 	countTables := 0
 	countReplicas := 0
+
+	wg := &sync.WaitGroup{}
 
 	s := Stat{}
 	for res.Next(&s) {
@@ -240,15 +261,9 @@ func extractAllMetrics(sess *r.Session, scrapes chan<- scrapeResult) error {
 				if !*countRows || !*getTableStats {
 					continue
 				}
-				res, err := r.DB(s.DB).Table(s.Table).Count().Run(sess)
-				if err != nil {
-					return err
-				}
-				var count float64
-				if err = res.One(&count); err != nil {
-					return err
-				}
-				scrapes <- s.newScrapeResult("table_docs_total", count)
+
+				wg.Add(1)
+				go countTableDocs(s.Server, s.DB, s.Table, sess, scrapes, wg)
 			}
 		case "table_server":
 			{
@@ -266,6 +281,8 @@ func extractAllMetrics(sess *r.Session, scrapes chan<- scrapeResult) error {
 	scrapes <- scrapeResult{Name: "cluster_tables_total", Value: float64(countTables)}
 	scrapes <- scrapeResult{Name: "cluster_replicas_total", Value: float64(countReplicas)}
 
+	wg.Wait()
+
 	return nil
 }
 
@@ -276,28 +293,14 @@ func (e *Exporter) scrape(scrapes chan<- scrapeResult) {
 	now := time.Now().UnixNano()
 	e.totalScrapes.Inc()
 
-	sess, err := r.Connect(r.ConnectOpts{
-		Addresses: e.addrs,
-		Database:  "rethinkdb",
-		AuthKey:   e.auth,
-		Username:  e.user,
-		Password:  e.pass,
-	})
-
-	errCount := 0
-	if err == nil {
-		if err := extractAllMetrics(sess, scrapes); err != nil {
-			errCount++
-		}
-		scrapes <- scrapeResult{Name: "up", Value: float64(1)}
-		sess.Close()
-	}
-
-	if err != nil {
+	if err := extractAllMetrics(e.rconn, scrapes); err != nil {
 		log.Printf("scrape err: %s", err)
 		scrapes <- scrapeResult{Name: "up", Value: float64(0)}
+		e.scrapeError.Set(float64(1))
+	} else {
+		scrapes <- scrapeResult{Name: "up", Value: float64(1)}
 	}
-	e.scrapeError.Set(float64(errCount))
+
 	e.duration.Set(float64(time.Now().UnixNano()-now) / 1000000000)
 }
 
@@ -351,7 +354,22 @@ func main() {
 		log.Fatal("need parameter addr with len > 0 to connect to RethinkDB cluster")
 	}
 
-	exporter := NewRethinkDBExporter(*addr, *auth, *user, *pass, *clusterName, *namespace)
+	var tlsConfig *tls.Config
+	if len(*certFile) != 0 || len(*keyFile) != 0 {
+		var err error
+		tlsConfig, err = prepareTLSConfig(*caFile, *certFile, *keyFile)
+		if err != nil {
+			log.Fatalf("failed to prepare tls config: %v", err)
+		}
+	}
+
+	rconn, err := connectRethinkdb(*addr, *auth, *user, *pass, tlsConfig)
+	if err != nil {
+		log.Fatalf("failed to connect to db: %v", err)
+	}
+	defer rconn.Close()
+
+	exporter := NewRethinkDBExporter(*clusterName, *namespace, rconn)
 	prometheus.MustRegister(exporter)
 
 	http.Handle(*metricPath, prometheus.Handler())
@@ -368,4 +386,20 @@ func main() {
 
 	log.Printf("listening at %s", *listenAddress)
 	log.Fatal(http.ListenAndServe(*listenAddress, nil))
+}
+
+func connectRethinkdb(addr, auth, user, pass string, tlsConfig *tls.Config) (*r.Session, error) {
+	sess, err := r.Connect(r.ConnectOpts{
+		Addresses: strings.Split(addr, ","),
+		Database:  "rethinkdb",
+		AuthKey:   auth,
+		Username:  user,
+		Password:  pass,
+		TLSConfig: tlsConfig,
+		MaxOpen:   20,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return sess, err
 }
