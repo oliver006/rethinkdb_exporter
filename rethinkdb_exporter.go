@@ -261,8 +261,12 @@ func extractAllMetrics(sess r.QueryExecutor, scrapes chan<- scrapeResult) error 
 					continue
 				}
 
+				// make local vars to remove data race in wg.Go()
+				server := s.Server
+				db := s.DB
+				table := s.Table
 				wg.Go(func() error {
-					return countTableDocs(s.Server, s.DB, s.Table, sess, scrapes)
+					return countTableDocs(server, db, table, sess, scrapes)
 				})
 			}
 		case "table_server":

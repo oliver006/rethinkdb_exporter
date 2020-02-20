@@ -7,31 +7,24 @@ import (
 	"log"
 	"strings"
 	"sync"
-	"sync/atomic"
-)
-
-const (
-	notInited = 0
-	inited    = 1
 )
 
 type lazySession struct {
 	*r.Session
-	inited int32
 
 	opts r.ConnectOpts
 	m    sync.Mutex
 }
 
 func (l *lazySession) Close() error {
-	if atomic.LoadInt32(&l.inited) == inited {
+	if l.Session != nil {
 		return l.Session.Close()
 	}
 	return nil
 }
 
 func (l *lazySession) IsConnected() bool {
-	if atomic.LoadInt32(&l.inited) == notInited {
+	if l.Session == nil {
 		err := l.connect()
 		if err != nil {
 			log.Printf("failed to connect to rethinkdb: %v", err)
@@ -51,7 +44,7 @@ func (l *lazySession) IsConnected() bool {
 }
 
 func (l *lazySession) Query(ctx context.Context, q r.Query) (*r.Cursor, error) {
-	if atomic.LoadInt32(&l.inited) == notInited {
+	if l.Session == nil {
 		err := l.connect()
 		if err != nil {
 			return nil, err
@@ -70,7 +63,7 @@ func (l *lazySession) Query(ctx context.Context, q r.Query) (*r.Cursor, error) {
 }
 
 func (l *lazySession) Exec(ctx context.Context, q r.Query) error {
-	if atomic.LoadInt32(&l.inited) == notInited {
+	if l.Session == nil {
 		err := l.connect()
 		if err != nil {
 			return err
@@ -93,20 +86,18 @@ func (l *lazySession) connect() error {
 	defer l.m.Unlock()
 
 	var err error
-	if atomic.LoadInt32(&l.inited) == notInited {
+	if l.Session == nil {
 		l.Session, err = r.Connect(l.opts)
 		if err != nil {
 			// to connect at next attempt
 			l.Session = nil
 		}
-		atomic.StoreInt32(&l.inited, inited)
 	}
 	return err
 }
 
 func connectRethinkdb(addr, auth, user, pass string, tlsConfig *tls.Config) *lazySession {
 	return &lazySession{
-		inited: notInited,
 		opts: r.ConnectOpts{
 			Addresses: strings.Split(addr, ","),
 			Database:  "rethinkdb",
