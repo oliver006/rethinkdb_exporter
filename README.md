@@ -52,6 +52,10 @@ db.user            | Username for RethinkDB connection (for versions >= 2.3) (mu
 db.pass            | Password for RethinkDB connection (for versions >= 2.3)
 db.count-rows      | Count rows per table, turn off if you experience perf. issues with large tables
 db.table-stats     | Get stats for all tables.
+db.tls.enable      | Enable tls for connection to rethinkdb
+db.tls.cert        | Path to certificate file
+db.tls.key         | Path to key file
+db.tls.ca          | Path to CA file
 clustername        | Name of the cluster, if set it's added as a label to the metrics.
 namespace          | Namespace for the metrics, defaults to "rethinkdb".
 web.listen-address | Address to listen on for web interface and telemetry, default `:9123`
