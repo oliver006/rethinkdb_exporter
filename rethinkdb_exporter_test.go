@@ -85,11 +85,7 @@ func TestMetrics(t *testing.T) {
 	}
 	defer r.DBDrop(dbName).Run(sess)
 
-	rc, err := connectRethinkdb(os.Getenv("RETHINKDB_URI"), "", "", "", nil)
-	if err != nil {
-		t.Errorf("DB connect failed")
-		return
-	}
+	rc := connectRethinkdb(os.Getenv("RETHINKDB_URI"), "", "", "", nil)
 
 	e := NewRethinkDBExporter("test", "", rc)
 	e.metrics = map[string]*prometheus.GaugeVec{}
@@ -181,11 +177,7 @@ func TestMetricsNoRowCounting(t *testing.T) {
 
 	*countRows = false
 
-	rc, err := connectRethinkdb(os.Getenv("RETHINKDB_URI"), "", "", "", nil)
-	if err != nil {
-		t.Errorf("DB connect failed")
-		return
-	}
+	rc := connectRethinkdb(os.Getenv("RETHINKDB_URI"), "", "", "", nil)
 
 	e := NewRethinkDBExporter("test", "", rc)
 	e.metrics = map[string]*prometheus.GaugeVec{}
