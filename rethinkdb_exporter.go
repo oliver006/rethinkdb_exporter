@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"golang.org/x/sync/errgroup"
 	"log"
 	"net/http"
 	"reflect"
@@ -207,24 +208,21 @@ func (s *Stat) extractQueryEngineStats(scrapes chan<- scrapeResult) {
 	s.extracStructMetrics(prefix, s.QueryEngine, scrapes)
 }
 
-func countTableDocs(server, db, table string, sess r.QueryExecutor, scrapes chan<- scrapeResult, wg *sync.WaitGroup) {
-	defer wg.Done()
-
+func countTableDocs(server, db, table string, sess r.QueryExecutor, scrapes chan<- scrapeResult) error {
 	res, err := r.DB(db).Table(table).Info().Run(sess)
 	if err != nil {
-		log.Printf("failed to get table info: %v", err)
-		return
+		return fmt.Errorf("failed to get table info: %v", err)
 	}
 	var info struct {
 		DocCount []float64 `gorethink:"doc_count_estimates"`
 	}
 	if err = res.One(&info); err != nil {
-		log.Printf("failed to read table info: %v", err)
-		return
+		return fmt.Errorf("failed to read table info: %v", err)
 	}
 	if len(info.DocCount) > 0 {
 		scrapes <- (&Stat{Server: server, DB: db, Table: table}).newScrapeResult("table_docs_total", info.DocCount[0])
 	}
+	return nil
 }
 
 func extractAllMetrics(sess r.QueryExecutor, scrapes chan<- scrapeResult) error {
@@ -239,7 +237,7 @@ func extractAllMetrics(sess r.QueryExecutor, scrapes chan<- scrapeResult) error 
 	countTables := 0
 	countReplicas := 0
 
-	wg := &sync.WaitGroup{}
+	wg := &errgroup.Group{}
 
 	s := Stat{}
 	for res.Next(&s) {
@@ -263,8 +261,9 @@ func extractAllMetrics(sess r.QueryExecutor, scrapes chan<- scrapeResult) error 
 					continue
 				}
 
-				wg.Add(1)
-				go countTableDocs(s.Server, s.DB, s.Table, sess, scrapes, wg)
+				wg.Go(func() error {
+					return countTableDocs(s.Server, s.DB, s.Table, sess, scrapes)
+				})
 			}
 		case "table_server":
 			{
@@ -282,9 +281,7 @@ func extractAllMetrics(sess r.QueryExecutor, scrapes chan<- scrapeResult) error 
 	scrapes <- scrapeResult{Name: "cluster_tables_total", Value: float64(countTables)}
 	scrapes <- scrapeResult{Name: "cluster_replicas_total", Value: float64(countReplicas)}
 
-	wg.Wait()
-
-	return nil
+	return wg.Wait()
 }
 
 func (e *Exporter) scrape(scrapes chan<- scrapeResult) {
@@ -355,19 +352,16 @@ func main() {
 		log.Fatal("need parameter addr with len > 0 to connect to RethinkDB cluster")
 	}
 
+	var err error
 	var tlsConfig *tls.Config
 	if *tlsEnable {
-		var err error
 		tlsConfig, err = prepareTLSConfig(*caFile, *certFile, *keyFile)
 		if err != nil {
 			log.Fatalf("failed to prepare tls config: %v", err)
 		}
 	}
 
-	rconn, err := connectRethinkdb(*addr, *auth, *user, *pass, tlsConfig)
-	if err != nil {
-		log.Fatalf("failed to connect to db: %v", err)
-	}
+	rconn := connectRethinkdb(*addr, *auth, *user, *pass, tlsConfig)
 	defer rconn.Close()
 
 	exporter := NewRethinkDBExporter(*clusterName, *namespace, rconn)
@@ -387,20 +381,4 @@ func main() {
 
 	log.Printf("listening at %s", *listenAddress)
 	log.Fatal(http.ListenAndServe(*listenAddress, nil))
-}
-
-func connectRethinkdb(addr, auth, user, pass string, tlsConfig *tls.Config) (*r.Session, error) {
-	sess, err := r.Connect(r.ConnectOpts{
-		Addresses: strings.Split(addr, ","),
-		Database:  "rethinkdb",
-		AuthKey:   auth,
-		Username:  user,
-		Password:  pass,
-		TLSConfig: tlsConfig,
-		MaxOpen:   20,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return sess, err
 }
