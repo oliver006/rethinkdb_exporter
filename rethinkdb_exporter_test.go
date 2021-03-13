@@ -7,15 +7,18 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
-	r "github.com/GoRethink/gorethink"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
+	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 )
 
 var (
@@ -75,8 +78,17 @@ func setupDB(t *testing.T) (sess *r.Session, dbName string, err error) {
 	return
 }
 
-func TestMetrics(t *testing.T) {
+func getTestExporter() *Exporter {
+	e := NewRethinkDBExporter(
+		os.Getenv("RETHINKDB_URI"),
+		"", "", "", "test",
+		Options{countRows: true, getTableStats: true, metricPath: "/metrics"},
+	)
+	e.metrics = map[string]*prometheus.GaugeVec{}
+	return e
+}
 
+func TestMetrics(t *testing.T) {
 	sess, dbName, err := setupDB(t)
 	if err != nil {
 		t.Errorf("DB setup borked")
@@ -84,8 +96,7 @@ func TestMetrics(t *testing.T) {
 	}
 	defer r.DBDrop(dbName).Run(sess)
 
-	e := NewRethinkDBExporter(os.Getenv("RETHINKDB_URI"), "", "", "", "test", "")
-	e.metrics = map[string]*prometheus.GaugeVec{}
+	e := getTestExporter()
 
 	chM := make(chan prometheus.Metric)
 	chD := make(chan *prometheus.Desc)
@@ -164,7 +175,6 @@ func TestMetrics(t *testing.T) {
 }
 
 func TestMetricsNoRowCounting(t *testing.T) {
-
 	sess, dbName, err := setupDB(t)
 	if err != nil {
 		t.Errorf("DB setup borked")
@@ -172,10 +182,8 @@ func TestMetricsNoRowCounting(t *testing.T) {
 	}
 	defer r.DBDrop(dbName).Run(sess)
 
-	*countRows = false
-
-	e := NewRethinkDBExporter(os.Getenv("RETHINKDB_URI"), "", "", "", "test", "")
-	e.metrics = map[string]*prometheus.GaugeVec{}
+	e := getTestExporter()
+	e.options.countRows = false
 
 	chM := make(chan prometheus.Metric)
 	chD := make(chan *prometheus.Desc)
@@ -207,7 +215,6 @@ func TestMetricsNoRowCounting(t *testing.T) {
 		default:
 			log.Printf("default: m: %#v", m)
 		}
-
 	}
 
 	expectedCountMetrics := 51
@@ -252,9 +259,8 @@ func TestMetricsNoRowCounting(t *testing.T) {
 }
 
 func TestInvalidDB(t *testing.T) {
-
-	e := NewRethinkDBExporter("localhost:1", "", "", "", "test", "")
-	e.metrics = map[string]*prometheus.GaugeVec{}
+	e := getTestExporter()
+	e.addrs = []string{"localhost:1"}
 
 	scrapes := make(chan scrapeResult)
 	go e.scrape(scrapes)
@@ -270,4 +276,57 @@ func TestInvalidDB(t *testing.T) {
 	} else {
 		log.Println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this is expected")
 	}
+}
+
+func TestHttpHandlers(t *testing.T) {
+	e := getTestExporter()
+
+	ts := httptest.NewServer(e)
+	defer ts.Close()
+
+	for _, tst := range []struct {
+		path string
+		want string
+	}{
+		{
+			path: "/",
+			want: `<head><title>RethinkDB exporter`,
+		},
+		{
+			path: "/health",
+			want: `ok`,
+		},
+		{
+			path: "/metrics",
+			want: `up 1`,
+		},
+	} {
+		t.Run(fmt.Sprintf("path: %s", tst.path), func(t *testing.T) {
+			body := downloadURL(t, ts.URL+tst.path)
+			if !strings.Contains(body, tst.want) {
+				t.Fatalf(`error, expected string "%s" in body, got body: \n\n%s`, tst.want, body)
+			}
+		})
+	}
+}
+
+func downloadURL(t *testing.T, u string) string {
+	_, res := downloadURLWithStatusCode(t, u)
+	return res
+}
+
+func downloadURLWithStatusCode(t *testing.T, u string) (int, string) {
+	t.Logf("downloadURL() %s", u)
+
+	resp, err := http.Get(u)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return resp.StatusCode, string(body)
 }

@@ -10,63 +10,98 @@ import (
 	"sync"
 	"time"
 
-	r "github.com/GoRethink/gorethink"
 	"github.com/prometheus/client_golang/prometheus"
-)
-
-var (
-	addr          = flag.String("db.addr", "localhost:28015", "Address of one or more nodes of the cluster, comma separated")
-	auth          = flag.String("db.auth", "", "Auth key of the RethinkDB cluster")
-	user          = flag.String("db.user", "", "Auth user for 2.3+ RethinkDB cluster")
-	pass          = flag.String("db.pass", "", "Auth pass for 2.3+ RethinkDB cluster")
-	countRows     = flag.Bool("db.count-rows", true, "Count rows per table, turn off if you experience perf. issues with large tables")
-	getTableStats = flag.Bool("table-stats", true, "Get stats for all tables.")
-	clusterName   = flag.String("clustername", "", "Cluster Name, added as label to metrics")
-	namespace     = flag.String("namespace", "rethinkdb", "Namespace for metrics")
-	listenAddress = flag.String("web.listen-address", ":9123", "Address to listen on for web interface and telemetry.")
-	metricPath    = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	r "gopkg.in/rethinkdb/rethinkdb-go.v6"
 )
 
 type Exporter struct {
-	addrs        []string
-	auth         string
-	user         string
-	pass         string
-	clusterName  string
-	namespace    string
+	addrs       []string
+	auth        string
+	user        string
+	pass        string
+	clusterName string
+
 	duration     prometheus.Gauge
 	scrapeError  prometheus.Gauge
 	totalScrapes prometheus.Counter
 	metrics      map[string]*prometheus.GaugeVec
 	sync.RWMutex
+	mux *http.ServeMux
+
+	registry *prometheus.Registry
+
+	options Options
 }
 
-func NewRethinkDBExporter(addr, auth, user, pass, clusterName, namespace string) *Exporter {
-	return &Exporter{
+type Options struct {
+	namespace  string
+	metricPath string
+
+	getTableStats bool
+	countRows     bool
+}
+
+func NewRethinkDBExporter(addr, auth, user, pass, clusterName string, opt Options) *Exporter {
+
+	fmt.Printf("opts: %#v \n", opt)
+
+	e := &Exporter{
 		addrs:       strings.Split(addr, ","),
 		auth:        auth,
 		user:        user,
 		pass:        pass,
 		clusterName: clusterName,
-		namespace:   namespace,
+
+		options: opt,
+
+		registry: prometheus.NewRegistry(),
 
 		duration: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: namespace,
+			Namespace: opt.namespace,
 			Name:      "exporter_last_scrape_duration_seconds",
 			Help:      "The last scrape duration.",
 		}),
 		totalScrapes: prometheus.NewCounter(prometheus.CounterOpts{
-			Namespace: namespace,
+			Namespace: opt.namespace,
 			Name:      "exporter_scrapes_total",
 			Help:      "Current total rethinkdb scrapes.",
 		}),
 		scrapeError: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: namespace,
+			Namespace: opt.namespace,
 			Name:      "exporter_last_scrape_error",
 			Help:      "The last scrape error status.",
 		}),
 		metrics: map[string]*prometheus.GaugeVec{},
 	}
+
+	e.registry.MustRegister(e)
+
+	e.mux = http.NewServeMux()
+	e.mux.HandleFunc("/", e.indexHandler)
+	e.mux.HandleFunc("/health", e.healthHandler)
+	e.mux.Handle(opt.metricPath, promhttp.HandlerFor(e.registry, promhttp.HandlerOpts{}))
+
+	return e
+}
+
+func (e *Exporter) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	e.mux.ServeHTTP(w, r)
+}
+
+func (e *Exporter) healthHandler(w http.ResponseWriter, r *http.Request) {
+	_, _ = w.Write([]byte(`ok`))
+}
+
+func (e *Exporter) indexHandler(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte(`<html>
+<head><title>RethinkDB exporter</title></head>
+<body>
+<h1>RethinkDB exporter</h1>
+<p><a href='` + e.options.metricPath + `'>Metrics</a></p>
+</body>
+</html>
+`))
 }
 
 func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
@@ -199,15 +234,15 @@ func (s *Stat) extractStorageEngineStats(scrapes chan<- scrapeResult) {
 	s.extracStructMetrics("table_server_disk", s.StorageEngine.Disk.SpaceUsage, scrapes)
 }
 
-func (s *Stat) extractQueryEngineStats(scrapes chan<- scrapeResult) {
+func (s *Stat) extractQueryEngineStats(scrapes chan<- scrapeResult, countRows, getTableStats bool) {
 	prefix := s.ID[0]
-	if (prefix == "table" || prefix == "table_server") && !*getTableStats {
+	if (prefix == "table" || prefix == "table_server") && !getTableStats {
 		return
 	}
 	s.extracStructMetrics(prefix, s.QueryEngine, scrapes)
 }
 
-func extractAllMetrics(sess *r.Session, scrapes chan<- scrapeResult) error {
+func extractAllMetrics(sess *r.Session, scrapes chan<- scrapeResult, countRows, getTableStats bool) error {
 
 	res, err := r.Table("stats").Run(sess)
 	if err != nil {
@@ -227,7 +262,7 @@ func extractAllMetrics(sess *r.Session, scrapes chan<- scrapeResult) error {
 			continue
 		}
 
-		s.extractQueryEngineStats(scrapes)
+		s.extractQueryEngineStats(scrapes, countRows, getTableStats)
 
 		switch s.ID[0] {
 		case "server":
@@ -237,7 +272,7 @@ func extractAllMetrics(sess *r.Session, scrapes chan<- scrapeResult) error {
 		case "table":
 			{
 				countTables++
-				if !*countRows || !*getTableStats {
+				if !countRows || !getTableStats {
 					continue
 				}
 				res, err := r.DB(s.DB).Table(s.Table).Count().Run(sess)
@@ -253,7 +288,7 @@ func extractAllMetrics(sess *r.Session, scrapes chan<- scrapeResult) error {
 		case "table_server":
 			{
 				countReplicas++
-				if !*getTableStats {
+				if !getTableStats {
 					continue
 				}
 				s.extractStorageEngineStats(scrapes)
@@ -286,7 +321,7 @@ func (e *Exporter) scrape(scrapes chan<- scrapeResult) {
 
 	errCount := 0
 	if err == nil {
-		if err := extractAllMetrics(sess, scrapes); err != nil {
+		if err := extractAllMetrics(sess, scrapes, e.options.countRows, e.options.getTableStats); err != nil {
 			errCount++
 		}
 		scrapes <- scrapeResult{Name: "up", Value: float64(1)}
@@ -330,7 +365,7 @@ func (e *Exporter) setMetrics(scrapes <-chan scrapeResult) {
 			}
 
 			e.metrics[name] = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-				Namespace: e.namespace,
+				Namespace: e.options.namespace,
 				Name:      name,
 			}, asArray)
 		}
@@ -345,27 +380,38 @@ func (e *Exporter) collectMetrics(metrics chan<- prometheus.Metric) {
 }
 
 func main() {
+	var (
+		addr = flag.String("db.addr", "localhost:28015", "Address of one or more nodes of the cluster, comma separated")
+		auth = flag.String("db.auth", "", "Auth key of the RethinkDB cluster")
+		user = flag.String("db.user", "", "Auth user for 2.3+ RethinkDB cluster")
+		pass = flag.String("db.pass", "", "Auth pass for 2.3+ RethinkDB cluster")
+
+		countRows     = flag.Bool("db.count-rows", true, "Count rows per table, turn off if you experience perf. issues with large tables")
+		getTableStats = flag.Bool("table-stats", true, "Get stats for all tables.")
+
+		clusterName   = flag.String("clustername", "", "Cluster Name, added as label to metrics")
+		namespace     = flag.String("namespace", "rethinkdb", "Namespace for metrics")
+		listenAddress = flag.String("web.listen-address", ":9123", "Address to listen on for web interface and telemetry.")
+		metricPath    = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
+	)
+
 	flag.Parse()
 
 	if len(*addr) == 0 {
 		log.Fatal("need parameter addr with len > 0 to connect to RethinkDB cluster")
 	}
 
-	exporter := NewRethinkDBExporter(*addr, *auth, *user, *pass, *clusterName, *namespace)
+	options := Options{
+		namespace:  *namespace,
+		metricPath: *metricPath,
+
+		countRows:     *countRows,
+		getTableStats: *getTableStats,
+	}
+
+	exporter := NewRethinkDBExporter(*addr, *auth, *user, *pass, *clusterName, options)
 	prometheus.MustRegister(exporter)
 
-	http.Handle(*metricPath, prometheus.Handler())
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`<html>
-<head><title>RethinkDB exporter</title></head>
-<body>
-<h1>RethinkDB exporter</h1>
-<p><a href='` + *metricPath + `'>Metrics</a></p>
-</body>
-</html>
-`))
-	})
-
 	log.Printf("listening at %s", *listenAddress)
-	log.Fatal(http.ListenAndServe(*listenAddress, nil))
+	log.Fatal(http.ListenAndServe(*listenAddress, exporter))
 }
