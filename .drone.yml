@@ -16,24 +16,69 @@ services:
 
 steps:
   - name: tests
-    image: "golang:1.13"
+    image: "golang:1.16"
     environment:
       GO111MODULE: on
       RETHINKDB_URI: "database:28015"
       COVERALLS_TOKEN:
         from_secret: coveralls-token
     commands:
-      - 'go build -mod=vendor'
-      - "sleep 10"   # let the DB test instances all come up first
-      - 'go test -mod=vendor -v -covermode=atomic -cover -race -coverprofile=coverage.txt .'
+      - 'go build .'
+      - "sleep 10"   # let the DB test instance come up first
+      - 'go test -v -covermode=atomic -cover -race -coverprofile=coverage.txt .'
       - 'echo "checking gofmt"'
       - 'echo " ! gofmt -d *.go       2>&1 | read " | bash'
       - 'echo "checking gofmt - DONE"'
-      - 'go vet -mod=vendor .'
+      - 'go vet .'
       - 'go get github.com/mattn/goveralls'
       - '/go/bin/goveralls -coverprofile=coverage.txt -service=drone.io'
     when:
       event:
         - pull_request
         - push
+        - tag
 
+
+  - name: test-docker-build
+    image: plugins/docker
+    settings:
+      tags: "test"
+      dockerfile: Dockerfile
+      repo: oliver006/rethinkdb_exporter
+      target: scratch
+      dry_run: true
+      build_args:
+        - 'TAG=test'
+        - 'SHA1=${DRONE_COMMIT_SHA}'
+        - 'GOARCH=amd64'
+      username:
+        from_secret: docker_test_user
+      password:
+        from_secret: docker_test_pass
+    when:
+      event:
+        - pull_request
+        - push
+        - tag
+
+
+  - name: release-docker-image-scratch
+    image: plugins/docker
+    settings:
+      tags: "latest,latest-amd64,${DRONE_TAG},${DRONE_TAG}-amd64"
+      dockerfile: Dockerfile
+      repo: oliver006/rethinkdb_exporter
+      target: scratch
+      build_args:
+        - 'TAG=${DRONE_TAG}'
+        - 'SHA1=${DRONE_COMMIT_SHA}'
+        - 'GOARCH=amd64'
+      username:
+        from_secret: docker_user
+      password:
+        from_secret: docker_pass
+    when:
+      event:
+        - tag
+    depends_on:
+      - tests
