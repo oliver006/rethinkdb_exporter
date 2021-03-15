@@ -298,7 +298,7 @@ func TestHttpHandlers(t *testing.T) {
 		},
 		{
 			path: "/metrics",
-			want: `up 1`,
+			want: `up{cluster="test"} 1`,
 		},
 	} {
 		t.Run(fmt.Sprintf("path: %s", tst.path), func(t *testing.T) {
