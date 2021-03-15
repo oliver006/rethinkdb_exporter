@@ -16,6 +16,8 @@ import (
 )
 
 type Exporter struct {
+	sync.RWMutex
+
 	addrs       []string
 	auth        string
 	user        string
@@ -26,12 +28,10 @@ type Exporter struct {
 	scrapeError  prometheus.Gauge
 	totalScrapes prometheus.Counter
 	metrics      map[string]*prometheus.GaugeVec
-	sync.RWMutex
-	mux *http.ServeMux
 
+	mux      *http.ServeMux
 	registry *prometheus.Registry
-
-	options Options
+	options  Options
 }
 
 type Options struct {
@@ -43,7 +43,6 @@ type Options struct {
 }
 
 func NewRethinkDBExporter(addr, auth, user, pass, clusterName string, opt Options) *Exporter {
-
 	fmt.Printf("opts: %#v \n", opt)
 
 	e := &Exporter{
@@ -209,7 +208,6 @@ func includeMetric(prefix, tag string) bool {
 }
 
 func (s *Stat) extracStructMetrics(prefix string, src interface{}, scrapes chan<- scrapeResult) {
-
 	st := reflect.TypeOf(src)
 	v := reflect.ValueOf(src)
 	for pos := 0; pos < st.NumField(); pos++ {
