@@ -20,14 +20,11 @@ steps:
     environment:
       GO111MODULE: on
       RETHINKDB_URI: "database:28015"
-      COVERALLS_TOKEN:
-        from_secret: coveralls-token
     commands:
       - go build .
       - sleep 10   # let the DB test instance come up first
       - make test
       - make checks
-      - make upload-coverage
     when:
       event:
         - pull_request
@@ -67,7 +64,7 @@ steps:
       repo: oliver006/rethinkdb_exporter
       target: scratch
       build_args:
-        - 'TAG=${DRONE_TAG}'
+        - 'TAG=tst'
         - 'SHA1=${DRONE_COMMIT_SHA}'
         - 'GOARCH=amd64'
       username:
@@ -78,3 +75,19 @@ steps:
       event:
         - tag
         
+# got to do this last cause it'll mess up the go.mod / go.sum file and that breaks the docker build
+  - name: upload-coverage
+    image: "golang:1.16"
+    environment:
+      GO111MODULE: on
+      RETHINKDB_URI: "database:28015"
+      COVERALLS_TOKEN:
+        from_secret: coveralls-token
+    commands:
+      - ls -la
+      - make upload-coverage
+    when:
+      event:
+        - pull_request
+        - push
+        - tag
