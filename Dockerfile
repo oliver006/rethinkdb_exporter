@@ -10,10 +10,6 @@ ARG GOARCH="amd64"
 ARG SHA1="[no-sha]"
 ARG TAG="[no-tag]"
 
-RUN ls -la 
-RUN cat go.mod
-RUN cat go.sum
-
 RUN apk --no-cache add ca-certificates
 RUN BUILD_DATE=$(date +%F-%T) && CGO_ENABLED=0 GOOS=linux GOARCH=$GOARCH go build -o /bin/rethinkdb_exporter \
     -ldflags  "-s -w -extldflags \"-static\" -X main.BuildVersion=$TAG -X main.BuildCommitSha=$SHA1 -X main.BuildDate=$BUILD_DATE" .

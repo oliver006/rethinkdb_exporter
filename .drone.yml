@@ -13,7 +13,6 @@ services:
   ports:
     - 28015
 
-
 steps:
   - name: tests
     image: "golang:1.16"
@@ -51,12 +50,11 @@ steps:
     when:
       event:
         - push
+        - pull_request
         - tag
-      branch:
-        - master
 
 
-  - name: release-docker-image-scratch
+  - name: release-docker-image
     image: plugins/docker
     settings:
       tags: "latest,latest-amd64,${DRONE_TAG},${DRONE_TAG}-amd64"
@@ -74,7 +72,8 @@ steps:
     when:
       event:
         - tag
-        
+
+
 # got to do this last cause it'll mess up the go.mod / go.sum file and that breaks the docker build
   - name: upload-coverage
     image: "golang:1.16"
@@ -84,7 +83,6 @@ steps:
       COVERALLS_TOKEN:
         from_secret: coveralls-token
     commands:
-      - ls -la
       - make upload-coverage
     when:
       event:
