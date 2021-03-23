@@ -62,7 +62,7 @@ steps:
       repo: oliver006/rethinkdb_exporter
       target: scratch
       build_args:
-        - 'TAG=tst'
+        - 'TAG=${DRONE_TAG}'
         - 'SHA1=${DRONE_COMMIT_SHA}'
         - 'GOARCH=amd64'
       username:
