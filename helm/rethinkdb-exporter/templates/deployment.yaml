@@ -1,4 +1,4 @@
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ template "rethinkdb_exporter.fullname" . }}
@@ -15,6 +15,9 @@ spec:
       release: {{ .Release.Name }}
   template:
     metadata:
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9123'
       labels:
         app: {{ template "rethinkdb_exporter.name" . }}
         release: {{ .Release.Name }}
