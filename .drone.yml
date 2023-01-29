@@ -1,9 +1,6 @@
 kind: pipeline
 name: default
-
-workspace:
-  base: /go
-  path: src/github.com/oliver006/rethinkdb_exporter
+type: kubernetes
 
 
 services:
