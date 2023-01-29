@@ -5,14 +5,14 @@ type: kubernetes
 
 services:
 - name: database
-  image: rethinkdb:2
+  image: rethinkdb:2.4
   command: [ rethinkdb, --bind, all ]
   ports:
     - 28015
 
 steps:
   - name: tests
-    image: "golang:1.16"
+    image: "golang:1.19"
     environment:
       GO111MODULE: on
       RETHINKDB_URI: "database:28015"
@@ -73,10 +73,9 @@ steps:
 
 # got to do this last cause it'll mess up the go.mod / go.sum file and that breaks the docker build
   - name: upload-coverage
-    image: "golang:1.16"
+    image: "golang:1.19"
     environment:
       GO111MODULE: on
-      RETHINKDB_URI: "database:28015"
       COVERALLS_TOKEN:
         from_secret: coveralls-token
     commands:
