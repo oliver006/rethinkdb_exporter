@@ -12,7 +12,7 @@ services:
 
 steps:
   - name: tests
-    image: "golang:1.19"
+    image: "golang:1.20"
     environment:
       GO111MODULE: on
       RETHINKDB_URI: "database:28015"
@@ -73,7 +73,7 @@ steps:
 
 # got to do this last cause it'll mess up the go.mod / go.sum file and that breaks the docker build
   - name: upload-coverage
-    image: "golang:1.19"
+    image: "golang:1.20"
     environment:
       GO111MODULE: on
       COVERALLS_TOKEN:
