@@ -70,7 +70,7 @@ Metric names are `rethinkdb_cluster_[servers|server_errors|tables|replicas]_tota
 
 
 ### What does it look like?
-[Grafana](https://github.com/grafana) dashboard is available [here](https://grafana.com/dashboards/5043):<br>
+[Grafana](https://github.com/grafana) dashboard is available [here](https://grafana.com/grafana/dashboards/5043-rethinkdb/):<br>
 ![rethink_exporter_dashboard](https://grafana.com/api/dashboards/5043/images/3108/image)
 
 
